@@ -8,7 +8,7 @@ import tweepy
 import json
 import requests
 from requests_oauthlib import OAuth1
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 
 # <-- Functions -->
@@ -23,9 +23,9 @@ async def parseURL(interaction, url, caption, urlType):
         elif urlType == 'giphy':
             gifURL = findGiphyURL(url)
             if gifURL == 'https://giphy.com/static/img/giphy-be-animated-logo.gif':
-                return await handleError(interaction=interaction, errorType='response', errorText='Unable to find the gif from the link provided. Please try again.')
+                return await handleError(interaction=interaction, errorType='response', errorText='Unable to find the gif from the link provided.')
     except:
-        return await handleError(interaction=interaction, errorType='response', errorText=f'An error has occurred. Please try again.\n\n```{traceback.format_exc()}```')
+        return await handleError(interaction=interaction, errorType='response', errorText=f'An error has occurred.\n\n```{traceback.format_exc()}```')
 
     r = requests.get(gifURL, stream = True)
     if r.status_code == 200:
@@ -34,20 +34,21 @@ async def parseURL(interaction, url, caption, urlType):
 
         kind = filetype.guess('gif')
         if kind is None or kind.extension != 'gif':
-            return await handleError(interaction=interaction, errorType='response', errorText='The file provided is not a gif. Please try again.')
+            return await handleError(interaction=interaction, errorType='response', errorText='The file provided is not a gif..')
 
         embed = discord.Embed(title = 'Info', description = 'Downloaded gif.', color = 0x3498DB)
         await interaction.response.send_message(embed = embed)
 
         await postGif(interaction, url, gifURL, caption)
     else:
-        return await handleError(interaction=interaction, errorType='response', errorText='Unable to download gif. Please try again.')
+        return await handleError(interaction=interaction, errorType='response', errorText='Unable to download gif.')
 
 
 async def postGif(interaction, url, rawURL, caption):
     newCaption = f'{caption}\n\n{url}' if caption != '' else url
     try:
         gif = api.chunked_upload(filename='gif', media_category="tweet_gif").media_id_string
+
         if os.path.exists('gif') and os.path.isfile('gif'):
             os.remove('gif')
 
@@ -67,12 +68,19 @@ async def postGif(interaction, url, rawURL, caption):
             embed.set_image(url = rawURL)
             await interaction.edit_original_response(embed = embed)
         else:
-            return await handleError(interaction=interaction, errorType='response', errorText='An error has occured when attempting to post the tweet. Please try again.\n\n```{r.json()}```')
-    except:
-        if os.path.exists('gif') and os.path.isfile('gif'):
-            os.remove('gif')
+            errorMsg = r.json()["errors"][0]["message"]
 
-        return await handleError(interaction=interaction, errorText=f'An error has occurred. Please try again.\n\n```{traceback.format_exc()}```')
+            if 'Your Tweet text is too long.' in errorMsg:
+                errorMsg = 'The caption provided is too long.\nPlease try again with a shorter caption.'
+
+            return await handleError(interaction=interaction, errorType='edit', errorText=f'An error has occured when attempting to post the tweet.\n\n```{errorMsg}```')
+    except:
+        errorMsg = traceback.format_exc()
+
+        if 'File size exceeds 15728640 bytes.' in errorMsg:
+            errorMsg = 'The gif provided is over 15MB.\nPlease try again with a smaller gif, or compress the file.'
+
+        return await handleError(interaction=interaction, errorText=f'An error has occurred.\n\n```{errorMsg}```')
 
 
 # Regex to find the raw URL on tenor
@@ -119,11 +127,14 @@ def write_data(data):
 # Function to handle errors, prevents me from having to write the same code over and over again
 async def handleError(**args):
     if os.path.exists('gif') and os.path.isfile('gif'):
-        os.remove('gif')
+        try:
+            os.remove('gif')
+        except:
+            pass
 
     interaction = args.get('interaction')
     errorType = args.get('errorType', 'edit')
-    errorText = args.get('errorText', 'An error has occurred. Please try again.')
+    errorText = args.get('errorText', 'An error has occurred.')
 
     embed = discord.Embed(title = 'Error', description = errorText, color = 0xff0000)
 
@@ -131,6 +142,18 @@ async def handleError(**args):
         await interaction.edit_original_response(embed = embed)
     elif errorType == 'response':
         await interaction.response.send_message(embed = embed)
+
+
+# <-- Tasks -->
+@tasks.loop(seconds = 60)
+async def removeGifs():
+    for file in os.listdir():
+        kind = filetype.guess(file)
+        if kind.extension == 'gif':
+            try:
+                os.remove(file)
+            except:
+                pass
 
 
 # <-- Classes -->
@@ -186,6 +209,8 @@ async def on_ready():
     except Exception:
         print(f'{Colors.red}[!]{Colors.reset} An error has occurred while syncing commands.\n{traceback.format_exc()}')
         return
+
+    removeGifs.start()
 
 
 # <-- Main -->
