@@ -7,12 +7,11 @@ import discord
 import tweepy
 import json
 import requests
-from requests_oauthlib import OAuth1
 from discord.ext import commands, tasks
 
 
 # <-- Functions -->
-async def parseURL(interaction, url, caption, urlType):
+async def parseURL(interaction, url, caption, urlType, alt_text):
     gifURL = ''
 
     try:
@@ -39,41 +38,32 @@ async def parseURL(interaction, url, caption, urlType):
         embed = discord.Embed(title = 'Info', description = 'Downloaded gif.', color = 0x3498DB)
         await interaction.response.send_message(embed = embed)
 
-        await postGif(interaction, url, gifURL, caption)
+        await postGif(interaction, url, gifURL, caption, alt_text)
     else:
         return await handleError(interaction=interaction, errorType='response', errorText='Unable to download gif.')
 
 
-async def postGif(interaction, url, rawURL, caption):
-    newCaption = f'{caption}\n\n{url}' if caption != '' else url
+async def postGif(interaction, url, rawURL, caption, alt_text):
     try:
-        gif = api.chunked_upload(filename='gif', media_category="tweet_gif").media_id_string
+        gif = v1.chunked_upload(filename='gif', media_category="tweet_gif").media_id_string
+
+        if alt_text != '':
+            v1.create_media_metadata(media_id=gif, alt_text=alt_text)
 
         if os.path.exists('gif') and os.path.isfile('gif'):
             os.remove('gif')
 
-        r = requests.post(
-            url = 'https://api.twitter.com/2/tweets',
-            json = {
-                "text": newCaption,
-                "media": {
-                    "media_ids": [gif]
-                }
-            },
-            auth = OAuth
-        )
+        # post gif
+        try:
+            post = v2.create_tweet(text=caption, media_ids=[gif])
+            link = v2.create_tweet(text=url, in_reply_to_tweet_id=post[0]['id'])
 
-        if r.status_code == 201:
-            embed = discord.Embed(title = 'Success', description = f'[View tweet](https://twitter.com/gifkitties/status/{r.json()["data"]["id"]})', color = 0x00ff00)
-            embed.set_image(url = rawURL)
-            await interaction.edit_original_response(embed = embed)
-        else:
-            errorMsg = r.json()["errors"][0]["message"]
+            embed = discord.Embed(title='Success', description=f'[View Tweet](https://twitter.com/gifkitties/status/{post[0]["id"]})', color=discord.Color.green())
+            embed.set_image(url=rawURL)
+            await interaction.edit_original_response(embed=embed)
 
-            if 'Your Tweet text is too long.' in errorMsg:
-                errorMsg = 'The caption provided is too long.\nPlease try again with a shorter caption.'
-
-            return await handleError(interaction=interaction, errorType='edit', errorText=f'An error has occured when attempting to post the tweet.\n\n```{errorMsg}```')
+        except:
+            return await handleError(interaction=interaction, errorType='edit', errorText=f'An error has occured when attempting to post the tweet.\n\n```{traceback.format_exc()}```')
     except:
         errorMsg = traceback.format_exc()
 
@@ -104,7 +94,8 @@ def fetch_data():
             "consumer_key": "",
             "consumer_secret": "",
             "access_token": "",
-            "access_token_secret": ""
+            "access_token_secret": "",
+            "bearer_token": ""
         }
     }
 
@@ -118,6 +109,7 @@ def fetch_data():
         print(f'{Colors.red}[!]{Colors.reset} Config file not found! Creating one')
         write_data(temp_config)
         os._exit(0)
+
 
 def write_data(data):
     with open('config.json', 'w', encoding='utf8') as file:
@@ -144,18 +136,6 @@ async def handleError(**args):
         await interaction.response.send_message(embed = embed)
 
 
-# <-- Tasks -->
-@tasks.loop(seconds = 60)
-async def removeGifs():
-    for file in os.listdir():
-        kind = filetype.guess(file)
-        if kind.extension == 'gif':
-            try:
-                os.remove(file)
-            except:
-                pass
-
-
 # <-- Classes -->
 class Colors:
     green = "\033[92m"
@@ -166,6 +146,7 @@ class Colors:
 
 # <-- Variables -->
 config = fetch_data()
+
 
 # Discord
 token = config['discord']['token']
@@ -178,22 +159,24 @@ CONSUMER_KEY = config['twitter']['consumer_key']
 CONSUMER_SECRET = config['twitter']['consumer_secret']
 ACCESS_TOKEN = config['twitter']['access_token']
 ACCESS_TOKEN_SECRET = config['twitter']['access_token_secret']
+BEARER_TOKEN = config['twitter']['bearer_token']
 
-OAuth = OAuth1(CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 tweepy_auth = tweepy.OAuth1UserHandler(CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-api = tweepy.API(tweepy_auth, wait_on_rate_limit=True)
+
+v1 = tweepy.API(tweepy_auth, wait_on_rate_limit=True)
+v2 = tweepy.Client(consumer_key=CONSUMER_KEY, consumer_secret=CONSUMER_SECRET, access_token=ACCESS_TOKEN, access_token_secret=ACCESS_TOKEN_SECRET, bearer_token=BEARER_TOKEN, wait_on_rate_limit=True)
 
 
 # <-- Events -->
 @bot.tree.command(name='tweet')
 @discord.app_commands.describe(url = 'The URL of the gif you want to tweet.', caption = 'The caption you want to add to the tweet. (Optional)')
-async def tweet(interaction: discord.Interaction, url: str, caption: str = ''):
+async def tweet(interaction: discord.Interaction, url: str, caption: str = '', alt_text: str = ''):
     if url.startswith('https://tenor.com/view/'):
-        await parseURL(interaction, url, caption, 'tenor')
+        await parseURL(interaction, url, caption, 'tenor', alt_text)
     elif url.startswith('https://giphy.com/gifs/'):
-        await parseURL(interaction, url, caption, 'giphy')
+        await parseURL(interaction, url, caption, 'giphy', alt_text)
     elif url.endswith('.gif'):
-        await parseURL(interaction, url, caption, 'gif')
+        await parseURL(interaction, url, caption, 'gif', alt_text)
     else:
         return await handleError(interaction=interaction, errorType='response', errorText='Invalid URL provided.\nThe bot currently supports the following sites:```\n• Tenor\n• Giphy\n• Direct links to a gif (ending with .gif)```')
 
@@ -209,8 +192,6 @@ async def on_ready():
     except Exception:
         print(f'{Colors.red}[!]{Colors.reset} An error has occurred while syncing commands.\n{traceback.format_exc()}')
         return
-
-    removeGifs.start()
 
 
 # <-- Main -->
