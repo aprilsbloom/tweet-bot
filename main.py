@@ -56,7 +56,7 @@ async def postGif(interaction, url, rawURL, caption, alt_text):
         # post gif
         try:
             post = v2.create_tweet(text=caption, media_ids=[gif])
-            link = v2.create_tweet(text=url, in_reply_to_tweet_id=post[0]['id'])
+            v2.create_tweet(text=url, in_reply_to_tweet_id=post[0]['id'])
 
             embed = discord.Embed(title='Success', description=f'[View Tweet](https://twitter.com/gifkitties/status/{post[0]["id"]})', color=discord.Color.green())
             embed.set_image(url=rawURL)
