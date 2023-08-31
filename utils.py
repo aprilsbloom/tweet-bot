@@ -10,8 +10,14 @@ def fetch_data():
     temp_config = {
         "discord": {
             "token": "",
+            "archive_channel_id": 1,
             "authed_users": [],
-            "emojis": {}
+            "emojis": {},
+            "embed_colors": {
+                "success": "#2ECC71",
+                "error": "#ff0000",
+                "info": "#3498DB",
+            }
         },
         "twitter": {
             "consumer_key": "",
@@ -42,23 +48,9 @@ class Logger:
         self.grey = '\033[90m'
         self.reset = '\033[37m'
 
-    def fetch_time(self, time_type='now'):
-        datetime_obj = datetime.now()
-
-        match time_type:
-            case 'now':
-                time = datetime.now().strftime('%H:%M:%S')
-                return f'[{time}]'
-            case 'date':
-                date = datetime_obj.strftime('%d-%m-%Y')
-                return date
-            case 'full':
-                date = datetime_obj.strftime('%d/%m/%Y')
-                time = datetime_obj.strftime('%H:%M:%S')
-                return f'[{date} {time}]'
-            case _:
-                time = datetime.now().strftime('%H:%M:%S')
-                return time
+    def fetch_time(self):
+        time = datetime.now().strftime('%H:%M:%S')
+        return f'[{time}]'
 
     def info(self, text):
         current_time = self.fetch_time()
