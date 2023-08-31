@@ -114,35 +114,108 @@ async def handleError(interaction: discord.Interaction, errorText='', errorType=
         await interaction.edit_original_response(embed = embed)
 
 
-@bot.tree.command(name='set_emoji')
+@bot.tree.command(name = 'set_emoji')
 @discord.app_commands.describe(emoji = 'The emoji you want to append to your own posts')
 async def set_emoji(interaction: discord.Interaction, emoji: str):
     config = fetch_data()
 
-    if interaction.author.id not in config['discord']['authed_users']:
-        return handleError(interaction, 'You do not have permission to run this command. Please ask an administrator for access if you believe this to be in error')
+    if interaction.user.id not in config['discord']['authed_users']:
+        return await handleError(interaction, 'You do not have permission to run this command. Please ask an administrator for access if you believe this to be in error')
 
-    config['discord']['emojis'][str(interaction.author.id)] = emoji
+    config['discord']['emojis'][str(interaction.user.id)] = emoji
     write_data(config)
 
     embed = discord.Embed(title = 'Success', description = f'Your emoji has been set to {emoji}')
     await interaction.response.send_message(embed = embed)
 
+@bot.tree.command(name = 'view_emojis')
+@discord.app_commands.describe(user = 'The user whos emoji you wish to view')
+async def view_emojis(interaction, user: discord.Member = None):
+    embeds = []
+    config = fetch_data()
+    emojiDict = config['discord']['emojis']
+
+    for index in range(0, len(emojiDict.keys()), 10):
+        pass
+        # implement pages system here, i doubt we'd have enough admins tho lol
+
+@bot.tree.command(name = 'tweet')
+@discord.app_commands.describe(url = 'The gif URL you want to tweet', caption = 'The caption of the tweet', alt_text = 'The alt text of the tweet')
+async def tweet(interaction: discord.Interaction, url: str, caption: str = '', alt_text: str = ''):
+    config = fetch_data()
+
+    if interaction.user.id not in config['discord']['authed_users']:
+        return await handleError(interaction, 'You do not have permission to run this command. Please ask an administrator for access if you believe this to be in error')
+
+    urlType = ''
+    if url.startsWith('https://tenor.com/view/'): urlType = 'tenor'
+    elif url.startswith('https://giphy.com/gifs/'): urlType = 'giphy'
+    elif url.endswith('.gif'): urlType = 'gif'
+
+    await parseURL(interaction, url, caption, urlType, alt_text)
+
+@tweet.error
+async def tweet_error(interaction: discord.Interaction, error):
+    await handleError(interaction, errorText=f'An error has occurred.\n\n```{traceback.format_exc()}```')
+
+
+@bot.tree.context_menu(name='Fetch URL')
+async def fetch_url(interaction: discord.Interaction, message: discord.Message):
+    attachments = ''
+    split_text = message.content.split()
+
+    # iterate through the split message text and check for links
+    for text in split_text.copy():
+        if 'https://tenor' in text or 'https://giphy' in text or 'https://media.tenor' or text.endswith('.gif') or ('https://' in text and 'discord' in text):
+            split_text.remove(text)
+
+    # i have to double check the text for some reason lol, s/o kenny for reccomending this
+    for text in split_text:
+        if 'https://tenor' in text or 'https://giphy' in text or 'https://media.tenor' or text.endswith('.gif') or ('https://' in text and 'discord' in text):
+            attachments += f'<{text}>\n'
+
+    # iterate through attachmentss
+    if message.attachments:
+        for attachment in message.attachments:
+            print(f'Attachment: {attachment.url}')
+            attachments += f'<{attachment.url}>\n'
+
+    await interaction.response.send_message(content=attachments)
+
+
+# Admin commands
 @bot.tree.command(name = 'add_user')
 @discord.app_commands.describe(user = 'The user you wish to add to the list of permitted users')
 async def add_user(interaction: discord.Interaction, user: Union[discord.User, discord.Member]):
     config = fetch_data()
+
+    bot_info = await bot.application_info()
+    owner_id = bot_info.owner.id
+
+    if interaction.user.id != owner_id:
+        return await handleError(interaction, 'You do not have permission to run this command. ')
+
     if user.id not in config['discord']['authed_users']:
         config['discord']['authed_users'].append(user.id)
         write_data(config)
 
         embed = discord.Embed(title = 'Success', description = f'<@{user.id}> has been added to the list of authenticated users.')
         await interaction.response.send_message(embed = embed)
+    else:
+        return await handleError(interaction, f'<@{user.id}> is already in the list of authenticated users.')
+
 
 @bot.tree.command(name = 'remove_user')
 @discord.app_commands.describe(user = 'The user you wish to remove from the list of permitted users')
 async def remove_user(interaction: discord.Interaction, user: Union[discord.User, discord.Member]):
     config = fetch_data()
+
+    bot_info = await bot.application_info()
+    owner_id = bot_info.owner.id
+
+    if interaction.user.id != owner_id:
+        return await handleError(interaction, 'You do not have permission to run this command. ')
+
     if user.id in config['discord']['authed_users']:
         config['discord']['authed_users'].remove(user.id)
         write_data(config)
@@ -150,38 +223,11 @@ async def remove_user(interaction: discord.Interaction, user: Union[discord.User
         embed = discord.Embed(title = 'Success', description = f'<@{user.id}> has been removed from the list of authenticated users.')
         await interaction.response.send_message(embed = embed)
     else:
-        return handleError(interaction, f'<@{user.id}> is not in the list of authenticated users.')
-
-@bot.tree.command(name = 'tweet')
-@discord.app_commands.describe(url = 'The gif URL you want to tweet', caption = 'The caption of the tweet', alt_text = 'The alt text of the tweet')
-async def tweet(interaction: discord.Interaction, url: str, caption: str = '', alt_text: str = ''):
-    if url.startswith('https://tenor.com/view/'):
-        await parseURL(interaction, url, caption, 'tenor', alt_text)
-    elif url.startswith('https://giphy.com/gifs/'):
-        await parseURL(interaction, url, caption, 'giphy', alt_text)
-    elif url.endswith('.gif'):
-        await parseURL(interaction, url, caption, 'gif', alt_text)
-
-@tweet.error
-async def tweet_error(interaction: discord.Interaction, error):
-    await handleError(interaction, errorText=f'An error has occurred.\n\n```{traceback.format_exc()}```')
-
-@bot.tree.context_menu(name='Fetch URL')
-async def fetch_url(interaction: discord.Interaction, message: discord.Message):
-    attachments = ''
-    for text in message.content.split():
-        if 'https://tenor' in text or 'https://giphy' in text or 'https://media.tenor' or text.endswith('.gif'):
-            attachments += f'<{text}>\n'
-
-    if message.attachments:
-        for attachment in message.attachments:
-            attachments += f'<{attachment.url}>\n'
-
-    await interaction.response.send_message(content=attachments)
+        return await handleError(interaction, f'<@{user.id}> is not in the list of authenticated users.')
 
 
 log.info('Logging in to discord')
 try:
-    bot.run(token, log_handler=None)
+    bot.run(token)
 except:
     log.error(f'An error occured when logging in to Discord\n{traceback.format_exc()}')
