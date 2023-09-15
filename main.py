@@ -80,7 +80,12 @@ async def postGif(interaction, caption, alt_text, emoji):
     config = fetch_data()
 
     channel = bot.get_channel(config['discord']['archive_channel_id'])
-    msg = await channel.send(file=discord.File('gif.gif'))
+
+    try:
+        msg = await channel.send(file=discord.File('gif.gif'))
+    except:
+        return await handleError(interaction=interaction, errorType='edit', errorText=f'An error has occured when attempting to backup the gif before posting.\nDiscord is saying the gif is >10MB (their current filesize limit for bots for whatever reason lol)\nPlease compress your gif before trying again.\n\n```{traceback.format_exc()}```')
+
     url = msg.attachments[0].url
 
     try:
@@ -115,7 +120,10 @@ async def handleError(interaction: discord.Interaction, errorText='', errorType=
     embed = discord.Embed(title = 'Error', description = errorText, color = discord.Color.from_str(config['discord']['embed_colors']['error']))
 
     if errorType == 'response':
-        await interaction.response.send_message(embed=embed)
+        try:
+            await interaction.response.send_message(embed=embed)
+        except:
+            await interaction.edit_original_response(embed=embed)
     elif errorType == 'edit':
         await interaction.edit_original_response(embed = embed)
 
@@ -167,7 +175,7 @@ async def view_emojis(interaction, user: Optional[discord.Member] = None):
             embed = discord.Embed(title = f'Emoji for {username}', description = emojiDict[str(user.id)], color = discord.Color.from_str(config['discord']['embed_colors']['info']))
             await interaction.response.send_message(embed = embed)
         else:
-            await handleError(interaction, f'<@{user.id}> does not have an emoji set.', 'response')
+            return await handleError(interaction, f'<@{user.id}> does not have an emoji set.', 'response')
 
 
 @bot.tree.command(name = 'tweet')
@@ -195,7 +203,7 @@ async def tweet(interaction: discord.Interaction, url: str, caption: str = '', a
 
 @tweet.error
 async def tweet_error(interaction: discord.Interaction, error):
-    await handleError(interaction, f'An error has occurred.\n\n```{error}```', 'response')
+    await handleError(interaction, f'An error has occurred.\n\n```{error}```', 'edit')
 
 
 @bot.tree.context_menu(name='Fetch URL')
@@ -208,7 +216,7 @@ async def fetch_url(interaction: discord.Interaction, message: discord.Message):
         if 'https://tenor' in text or 'https://giphy' in text or 'https://media.tenor' or text.endswith('.gif') or ('https://' in text and 'discord' in text):
             split_text.remove(text)
 
-    # i have to double check the text for some reason lol, s/o kenny for reccomending this
+    # i have to double check the text for some reason lol, shitcode i know
     for text in split_text:
         if 'https://tenor' in text or 'https://giphy' in text or 'https://media.tenor' or text.endswith('.gif') or ('https://' in text and 'discord' in text):
             attachments += f'<{text}>\n'
