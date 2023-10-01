@@ -14,6 +14,7 @@ log = Logger()
 config = fetch_data()
 
 # Discord
+regex = r"\?(?:\w+=\w+&)*(?:ex|hm)=[^&]+&?|(?:\w+=\w+&)*(?:size|name)=[^&]+&?"
 token = config['discord']['token']
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix = '', intents = intents)
@@ -49,8 +50,8 @@ async def parseURL(interaction, url, caption, urlType, alt_text, emoji):
 			gifURL = url
 		elif urlType == 'tenor':
 			r = requests.get(url)
-			regex = r'(?i)\b((https?://media[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)'
-			gifURL = re.findall(regex, r.text)[0][0]
+			tenor_regex = r'(?i)\b((https?://media[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)'
+			gifURL = re.findall(tenor_regex, r.text)[0][0]
 		elif urlType == 'giphy':
 			r = requests.get(url)
 			gifURL = r.text.split('property="og:image" content="')[1].split('"')[0]
@@ -78,7 +79,6 @@ async def parseURL(interaction, url, caption, urlType, alt_text, emoji):
 
 async def postGif(interaction, caption, alt_text, emoji):
 	config = fetch_data()
-
 	channel = bot.get_channel(config['discord']['archive_channel_id'])
 
 	try:
@@ -86,7 +86,7 @@ async def postGif(interaction, caption, alt_text, emoji):
 	except:
 		return await handleError(interaction=interaction, errorType='edit', errorText=f'An error has occured when attempting to backup the gif before posting.\nDiscord is saying the gif is >10MB (their current filesize limit for bots for whatever reason lol)\nPlease compress your gif before trying again.\n\n```{traceback.format_exc()}```')
 
-	url = msg.attachments[0].url
+	url = re.sub(regex, "", msg.attachments[0].url)
 
 	try:
 		gif_res = v1.chunked_upload(filename='gif.gif', media_category="tweet_gif").media_id_string
@@ -195,7 +195,7 @@ async def tweet(interaction: discord.Interaction, url: str, caption: str = '', a
 	emoji = config['discord']['emojis'][str(interaction.user.id)].encode('utf-16', 'surrogatepass').decode('utf-16')
 	urlType = ''
 
-	regex = r"\?(?:\w+=\w+&)*(?:ex|hm)=[^&]+&?|(?:\w+=\w+&)*(?:size|name)=[^&]+&?"
+
 	url = re.sub(regex, '', url)
 
 	if url.startswith('https://tenor.com/view/'): urlType = 'tenor'
@@ -214,7 +214,6 @@ async def tweet_error(interaction: discord.Interaction, error):
 async def fetch_url(interaction: discord.Interaction, message: discord.Message):
 	attachments = ''
 	split_text = message.content.split()
-	regex = r"\?(?:\w+=\w+&)*(?:ex|hm)=[^&]+&?|(?:\w+=\w+&)*(?:size|name)=[^&]+&?"
 
 	# iterate through the split message text and check for links
 	for text in split_text.copy():
