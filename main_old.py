@@ -1,10 +1,10 @@
 
 import os
 import traceback
-# import filetype
+import filetype
 import re
 import discord
-# import tweepy
+import tweepy
 import requests
 from typing import Union, Optional
 from discord.ext import commands

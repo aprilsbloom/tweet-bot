@@ -11,7 +11,7 @@ def fetch_data():
     temp_config = {
         "discord": {
             "token": "",
-            "archive_channel_id": 1,
+            "archive_channel_id": 0,
             "authed_users": [],
             "emojis": {},
             "embed_colors": {
