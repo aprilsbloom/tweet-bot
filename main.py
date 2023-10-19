@@ -37,4 +37,4 @@ class Bot(commands.Bot):
 
 config = fetch_data()
 bot = Bot()
-bot.run("OTgwNzQ2OTA5MjIyMzM4NTgw.G3rU21.hp8XspJcDC0yKm5etVPjqTHgpbxiVbuZAwkjCQ")
+bot.run("")
