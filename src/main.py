@@ -1,16 +1,16 @@
+
 import os
 import traceback
-import filetype
+# import filetype
 import re
 import discord
-import tweepy
+# import tweepy
 import requests
 from typing import Union, Optional
 from discord.ext import commands
-from datetime import datetime
-from utils import Logger, fetch_data, write_data
+from utils.logger import log
+from utils.config import fetch_data, write_data
 
-log = Logger()
 config = fetch_data()
 
 # Discord
@@ -18,6 +18,7 @@ regex = r"\?(?:\w+=\w+&)*(?:ex|hm)=[^&]+&?|(?:\w+=\w+&)*(?:size|name)=[^&]+&?"
 token = config['discord']['token']
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix = '', intents = intents)
+FILESIZE_LIMIT_DISCORD = 0
 
 # Twitter
 CONSUMER_KEY = config['twitter']['consumer_key']
@@ -25,6 +26,7 @@ CONSUMER_SECRET = config['twitter']['consumer_secret']
 ACCESS_TOKEN = config['twitter']['access_token']
 ACCESS_TOKEN_SECRET = config['twitter']['access_token_secret']
 BEARER_TOKEN = config['twitter']['bearer_token']
+FILESIZE_LIMIT_TWITTER = 15728640
 
 tweepy_auth = tweepy.OAuth1UserHandler(CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 v1 = tweepy.API(tweepy_auth, wait_on_rate_limit=True)
@@ -60,6 +62,11 @@ async def parseURL(interaction, url, caption, urlType, alt_text, emoji):
 				return await handleError(interaction, 'Unable to find the gif from the link provided.', 'response')
 	except:
 		return await handleError(interaction=interaction, errorType='response', errorText=f'An error has occurred.\n\n```{traceback.format_exc()}```')
+
+	res_head = requests.head(gifURL)
+	file_size = res_head.headers["content-length"]
+	if file_size > FILESIZE_LIMIT_TWITTER or file_size > FILESIZE_LIMIT_DISCORD:
+		return await handleError(interaction=interaction, errorType='response', errorText='The gif you uploaded is too big. Please compress your file to below 10MB in size, and try again.')
 
 	r = requests.get(gifURL)
 	if r.status_code == 200:
