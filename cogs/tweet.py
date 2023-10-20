@@ -1,13 +1,9 @@
 import discord
 import re
-import httpx
-import filetype
 import tweepy
-import random
-import string
-import os
 from discord.ext import commands
-from utils.config import fetch_data
+from utils.config import fetch_data, write_data
+from utils.general import make_async_request, handleResponse
 
 # regexes
 TENOR_REGEX = r'(?i)\b((https?://media[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)'
@@ -42,7 +38,7 @@ class Tweet(commands.Cog):
 		)
 
 
-	@discord.app_commands.command(name = 'tweet', description = 'a')
+	@discord.app_commands.command(name = 'tweet', description = 'Post a tweet')
 	@discord.app_commands.describe(
 		url = 'The URL of the gif you want to tweet (please remove any additional text in the URL)',
 		alt_text = 'The alt text of the tweet (please be as informative as possible)',
@@ -55,16 +51,12 @@ class Tweet(commands.Cog):
 		alt_text: str,
 		caption: str = ''
 	):
-		job_id = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(32))
 		config = fetch_data()
 		bot_info = await self.bot.application_info()
 
-		if not os.path.exists('jobs/'):
-			os.mkdir('jobs')
-
 		# check if user is authed
 		if interaction.user.id not in config['discord']['authed_users'] and interaction.user.id != bot_info.owner.id:
-			return await self.handleResponse(
+			return await handleResponse(
 				interaction = interaction,
 				config = config,
 				content = 'You do not have permission to run this command.\nPlease ask an administrator for access if you believe this to be in error.',
@@ -73,7 +65,7 @@ class Tweet(commands.Cog):
 
 		# check if user has an emoji set
 		if str(interaction.user.id) not in config['discord']['emojis']:
-			return await self.handleResponse(
+			return await handleResponse(
 				interaction = interaction,
 				config = config,
 				content = 'You do not have an emoji set. Please use /emoji set before posting again.',
@@ -84,16 +76,23 @@ class Tweet(commands.Cog):
 		emoji = config['discord']['emojis'][str(interaction.user.id)].encode('utf-16', 'surrogatepass').decode('utf-16')
 		clean_url = re.sub(CLEAN_URL_REGEX, "", url)
 
+		await handleResponse(
+			interaction = interaction,
+			config = config,
+			content = 'Determining if the gif is valid...',
+			responseType = 'info'
+		)
+
 		# determine the real url of the given gif depending on what site is picked
 		if clean_url.startswith('https://tenor.com/view'):
-			response = await self.make_async_request(url)
+			response = await make_async_request(url)
 			url = re.findall(TENOR_REGEX, response.text)[0][0]
-		elif url.startswith('https://giphy.com/gifs/'):
-			res = await self.make_async_request(url)
+		elif clean_url.startswith('https://giphy.com/gifs/'):
+			res = await make_async_request(url)
 			tmp_url = res.text.split('property="og:image" content="')[1].split('"')[0]
 
 			if tmp_url == 'https://giphy.com/static/img/giphy-be-animated-logo.gif':
-				return self.handleResponse(
+				return handleResponse(
 					interaction = interaction,
 					config = config,
 					content = 'Unable to find the gif from the link provided.',
@@ -101,9 +100,18 @@ class Tweet(commands.Cog):
 				)
 			else:
 				url = tmp_url
+		elif clean_url.endswith('.gif'):
+			url = url
+		else:
+			return await handleResponse(
+				interaction = interaction,
+				config = config,
+				content = '',
+				responseType = 'error'
+			)
 
 		# check if file is bigger than what is allowed
-		res_head = await self.make_async_request(
+		res_head = await make_async_request(
 			url,
 			method = 'HEAD'
 		)
@@ -114,23 +122,20 @@ class Tweet(commands.Cog):
 		elif res_head.headers.get('Content-Length'):
 			file_size = res_head.headers.get('Content-Length')
 		else:
-			res_gif = await self.make_async_request(url)
+			print('content-length not present', res_head.headers)
+			res_gif = await make_async_request(url)
 			file_size = len(res_gif.content)
 
 		if int(file_size) > FILESIZE_LIMIT_TWITTER:
-			return await self.handleResponse(
+			return await handleResponse(
 				interaction = interaction,
 				config = config,
-				content = 'The gif you uploaded is too big. Please compress your file to below 10MB in size, and try again.',
+				content = 'The gif you uploaded is too big. Please compress your file to below 15MB in size, and try again.',
 				responseType = 'error'
 			)
 
-		# check if res_gif is assigned because we do it in the file_size check in order to get the byte length
-		if not res_gif:
-			res_gif = await self.make_async_request(url)
-
 		# upload file to catbox.moe
-		res_catbox = await self.make_async_request(
+		res_catbox = await make_async_request(
 			url = CATBOX_URL,
 			method = 'POST',
 			data = {
@@ -140,82 +145,44 @@ class Tweet(commands.Cog):
             },
 		)
 
+		# handle errors since it doesn't use json (hate)
 		if 'Something went wrong' in res_catbox.text:
-			return await self.handleResponse(
+			return await handleResponse(
 				interaction = interaction,
 				config = config,
 				content = 'An unknown error occurred when attempting to upload your gif to [catbox](https://catbox.moe). If this error persists, please contact an administrator.',
 				responseType = 'error'
 			)
 
-		# post tweet
-		with open(f'jobs/{job_id}.gif', 'wb') as f:
-			f.write(res_gif.content)
+		# append data to post queue and write it
+		config['twitter']['post_queue'].append(
+			{
+				'original_url': url,
+				'catbox_url': res_catbox.text,
+				'emoji': emoji,
+				'caption': caption,
+				'alt_text': alt_text
+			}
+		)
+		write_data(config)
 
-		mediaID = self.v1.chunked_upload(filename = f'jobs/{job_id}.gif', media_category = "tweet_gif").media_id_string
-		if alt_text != '':
-			self.v1.create_media_metadata(media_id = mediaID, alt_text = alt_text)
+		# return embed saying thing was added to queue
+		return await handleResponse(
+			interaction = interaction,
+			config = config,
+			content = 'Your post has been added to the queue.',
+			responseType = 'success'
+		)
 
-		post = self.v2.create_tweet(text = caption, media_ids = [ mediaID ])
-		self.v2.create_tweet(text = f'{url} - {emoji}', in_reply_to_tweet_id = post[0]['id'])
-
-		try:
-			os.remove(f'jobs/{job_id}.gif')
-		except:
-			pass
-
-
-		embed = discord.Embed(title = 'Success', description = f'[View Tweet](https://twitter.com/i/status/{post[0]["id"]})', color = discord.Color.from_str(config['discord']['embed_colors']['success']))
-		embed.set_image(url = url)
-		await interaction.edit_original_response(embed=embed)
-
-	async def make_async_request(
-		self,
-		url: str,
-		headers: dict = {},
-		method: str = 'GET',
-		data: dict = {},
-		json: dict = {},
-	):
-		async with httpx.AsyncClient() as client:
-			response = await client.request(
-				url = url,
-				headers = headers,
-				method = method,
-				data = data,
-				json = json
-			)
-
-		return response
-
-	async def handleResponse(
-		self,
-		interaction: discord.Interaction,
-		config: dict,
-		content: str,
-		responseType: str
-	):
-		embed = discord.Embed(description = content)
-
-		# embed title and color
-		match responseType:
-			case 'success':
-				embed.title = 'Success'
-				embed.color = discord.Color.from_str(config['discord']['embed_colors']['success'])
-			case 'info':
-				embed.title = 'Info'
-				embed.color = discord.Color.from_str(config['discord']['embed_colors']['info'])
-			case 'error':
-				embed.title = 'Error'
-				embed.color = discord.Color.from_str(config['discord']['embed_colors']['error'])
-
-		# respond with the embed
-		if interaction.response.is_done():
-			return await interaction.edit_original_response(embed = embed)
-		else:
-			return await interaction.response.send_message(embed = embed)
-
-
+	@tweet.error
+	async def tweet_error(self, interaction: discord.Interaction, error):
+		config = fetch_data()
+		return await handleResponse(
+			interaction = interaction,
+			config = config,
+			content = f'An unknown error has occurred: {error}',
+			responseType = 'error'
+		)
 
 # Cog setup
 async def setup(bot: commands.Bot):

@@ -1,6 +1,5 @@
 import os
 import json
-from datetime import datetime
 from .logger import log
 
 def write_data(data):
@@ -25,16 +24,16 @@ def fetch_data():
             "consumer_secret": "",
             "access_token": "",
             "access_token_secret": "",
-            "bearer_token": ""
+            "bearer_token": "",
+            "post_queue": []
         }
     }
 
     try:
         with open('config.json', 'r', encoding='utf8') as file:
-            temp_config.update(json.load(file))
+            temp_config.update(json.loads(file.read()))
             write_data(temp_config)
             return temp_config
-
     except (FileNotFoundError, json.decoder.JSONDecodeError):
         log.info('Config file not found! Creating one')
         write_data(temp_config)
