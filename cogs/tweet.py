@@ -106,9 +106,21 @@ class Tweet(commands.Cog):
 			return await handleResponse(
 				interaction = interaction,
 				config = config,
-				content = '',
+				content = 'The URL you entered is currently not supported by the bot. At the moment, we only support Tenor, Giphy, and URLs that end in .gif',
 				responseType = 'error'
 			)
+
+		# reassign the clean url of the gif
+		clean_url = re.sub(CLEAN_URL_REGEX, "", url)
+
+		for post in config['twitter']['post_queue']:
+			if post['original_url'] == clean_url:
+				return await handleResponse(
+					interaction = interaction,
+					config = config,
+					content = 'The URL you entered is already in the queue.',
+					responseType = 'error'
+				)
 
 		# check if file is bigger than what is allowed
 		res_head = await make_async_request(
@@ -122,7 +134,6 @@ class Tweet(commands.Cog):
 		elif res_head.headers.get('Content-Length'):
 			file_size = res_head.headers.get('Content-Length')
 		else:
-			print('content-length not present', res_head.headers)
 			res_gif = await make_async_request(url)
 			file_size = len(res_gif.content)
 
@@ -157,8 +168,9 @@ class Tweet(commands.Cog):
 		# append data to post queue and write it
 		config['twitter']['post_queue'].append(
 			{
-				'original_url': url,
+				'original_url': clean_url,
 				'catbox_url': res_catbox.text,
+				'author': interaction.user.id,
 				'emoji': emoji,
 				'caption': caption,
 				'alt_text': alt_text
@@ -171,7 +183,8 @@ class Tweet(commands.Cog):
 			interaction = interaction,
 			config = config,
 			content = 'Your post has been added to the queue.',
-			responseType = 'success'
+			responseType = 'success',
+			image_url = res_catbox.text
 		)
 
 	@tweet.error
@@ -180,7 +193,7 @@ class Tweet(commands.Cog):
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
-			content = f'An unknown error has occurred: {error}',
+			content = f'An unknown error has occurred:\n```\n{error}\n```',
 			responseType = 'error'
 		)
 

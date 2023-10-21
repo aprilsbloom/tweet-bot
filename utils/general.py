@@ -30,8 +30,18 @@ async def handleResponse(
 	interaction: discord.Interaction,
 	config: dict,
 	content: str,
-	responseType: str
+	responseType: str,
+	*,
+	image_url: str = None,
+	view: discord.ui.View = None,
+	replacement_embed: discord.Embed = None
 ):
+	if replacement_embed:
+		if interaction.response.is_done():
+			return await interaction.edit_original_response(embed = replacement_embed, view = view)
+		else:
+			return await interaction.response.send_message(embed = replacement_embed, view = view)
+
 	embed = discord.Embed(description = content)
 
 	# embed title and color
@@ -46,8 +56,17 @@ async def handleResponse(
 			embed.title = 'Error'
 			embed.color = discord.Color.from_str(config['discord']['embed_colors']['error'])
 
+	if image_url:
+		embed.set_image(url = image_url)
+
 	# respond with the embed
-	if interaction.response.is_done():
-		return await interaction.edit_original_response(embed = embed)
+	if view:
+		if interaction.response.is_done():
+			return await interaction.edit_original_response(embed = embed, view = view)
+		else:
+			return await interaction.response.send_message(embed = embed, view = view)
 	else:
-		return await interaction.response.send_message(embed = embed)
+		if interaction.response.is_done():
+			return await interaction.edit_original_response(embed = embed)
+		else:
+			return await interaction.response.send_message(embed = embed)

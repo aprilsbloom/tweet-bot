@@ -4,6 +4,7 @@ import traceback
 import random
 import string
 import tweepy
+from discord_webhook import DiscordWebhook
 from discord.ext import commands, tasks
 from utils.config import fetch_data, write_data
 from utils.logger import log
@@ -37,8 +38,8 @@ class Bot(commands.Bot):
 
 	async def on_ready(self):
 		await self.wait_until_ready()
-		print(f'Logged in as {self.user}.')
-		post_tweet.start()
+		log.success(f'Logged in as {self.user}.')
+		#post_tweet.start()
 
 
 @tasks.loop(hours = 2)
@@ -52,18 +53,34 @@ async def post_tweet():
 	post = random.choice(config['twitter']['post_queue'])
 
 	try:
+		webhook = DiscordWebhook(
+			url = config['discord']['webhook_url'],
+			avatar_url = 'https://cdn.discordapp.com/avatars/980746909222338580/840892f27a807f8ad37ed1f23f56d95d.webp?size=4096',
+			username = 'Tweet Bot'
+		)
+
 		# make jobs directory and fetch the content of the actual gif
 		if not os.path.exists('jobs/'):
 			os.mkdir('jobs')
 
 		job_id = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(32))
-		res_gif = await make_async_request(post.get('original_url', ''))
+		res_gif = await make_async_request(post.get('catbox_url', ''))
 
 		# if gif returns anything other than 200 (ok status code) then return error
 		if res_gif.status_code != 200:
 			config['twitter']['post_queue'].remove(post)
 			write_data(config)
-			return log.error('Error occurred while fetching gif')
+			log.error(f'An error occurred while fetching gif: {post["catbox_url"]} returned a non-ok status code')
+
+			embed = discord.Embed(
+				title = 'Error',
+				content = f'<@{post["author"]}>',
+				description = f'An error occurred while fetching gif: {post["catbox_url"]} returned a non-ok status code',
+				color = discord.Color.from_str(config['discord']['embed_colors']['success'])
+			)
+			webhook.add_embed(embed)
+			webhook.execute()
+			return
 
 		# write content to file
 		with open(f'jobs/{job_id}.gif', 'wb') as f:
@@ -76,17 +93,40 @@ async def post_tweet():
 
 		# post tweet and reply to it with url & emoji
 		tweet = v2.create_tweet(text = post.get('caption', ''), media_ids = [ mediaID ])
-		log.success(f'Successfully posted! https://twitter.com/i/status/{tweet[0]["id"]}')
-
 		catbox_url = post.get('catbox_url')
 		emoji = post.get('emoji')
 		v2.create_tweet(text = f'{catbox_url} - {emoji}', in_reply_to_tweet_id = tweet[0]['id'])
+
+		# log message to console and send message in discord
+		log.success(f'Successfully posted! https://twitter.com/i/status/{tweet[0]["id"]}')
+		embed = discord.Embed(
+			title = 'Success',
+			content = f'<@{post["author"]}>',
+			description = f'Successfully posted [tweet](https://twitter.com/i/status/{tweet[0]["id"]})',
+			color = discord.Color.from_str(config['discord']['embed_colors']['success'])
+		)
+		embed.set_image(post["catbox_url"])
+		webhook.add_embed(embed)
+		webhook.execute()
+
 
 		# remove post from queue now that its been posted
 		config['twitter']['post_queue'].remove(post)
 		write_data(config)
 	except:
+		# log error to console and send to discord
 		log.error(f'An error occurred while attempting to post a tweet\n{traceback.format_exc()}')
+		embed = discord.Embed(
+			title = 'Error',
+			content = f'<@{post["author"]}>',
+			description = f'An error occurred whilst attempting to post a tweet\n{traceback.format_exc()}',
+			color = discord.Color.from_str(config['discord']['embed_colors']['error'])
+		)
+		embed.set_image(post["catbox_url"])
+		webhook.add_embed(embed)
+		webhook.execute
+
+		# remove post from queue
 		config['twitter']['post_queue'].remove(post)
 		write_data(config)
 

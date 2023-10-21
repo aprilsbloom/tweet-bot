@@ -10,7 +10,7 @@ def fetch_data():
     temp_config = {
         "discord": {
             "token": "",
-            "archive_channel_id": 0,
+            "webhook_url": "",
             "authed_users": [],
             "emojis": {},
             "embed_colors": {

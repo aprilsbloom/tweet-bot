@@ -68,7 +68,7 @@ class Auth(commands.Cog):
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
-			content = f'An unknown error has occurred: {error}',
+			content = f'An unknown error has occurred:\n```\n{error}\n```',
 			responseType = 'error'
 		)
 
