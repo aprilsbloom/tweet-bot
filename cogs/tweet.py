@@ -125,7 +125,10 @@ class Tweet(commands.Cog):
 		# check if file is bigger than what is allowed
 		res_head = await make_async_request(
 			url,
-			method = 'HEAD'
+			method = 'HEAD',
+			headers = {
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+			}
 		)
 
 		# sites can return variations of the header, so we have to have checks for both capitalizations
