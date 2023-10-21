@@ -72,6 +72,7 @@ async def post_tweet():
 	try:
 		webhook = DiscordWebhook(
 			url = config['discord']['webhook_url'],
+			content = f'<@{post["author"]}>',
 			avatar_url = 'https://cdn.discordapp.com/avatars/980746909222338580/840892f27a807f8ad37ed1f23f56d95d.webp?size=4096',
 			username = 'Tweet Bot'
 		)
@@ -91,7 +92,6 @@ async def post_tweet():
 
 			embed = discord.Embed(
 				title = 'Error',
-				content = f'<@{post["author"]}>',
 				description = f'An error occurred while fetching gif: {post["catbox_url"]} returned a non-ok status code',
 				color = discord.Color.from_str(config['discord']['embed_colors']['success'])
 			)
@@ -118,7 +118,6 @@ async def post_tweet():
 		log.success(f'Successfully posted! https://twitter.com/i/status/{tweet[0]["id"]}')
 		embed = discord.Embed(
 			title = 'Success',
-			content = f'<@{post["author"]}>',
 			description = f'Successfully posted [tweet](https://twitter.com/i/status/{tweet[0]["id"]})',
 			color = discord.Color.from_str(config['discord']['embed_colors']['success'])
 		)
@@ -133,9 +132,14 @@ async def post_tweet():
 	except:
 		# log error to console and send to discord
 		log.error(f'An error occurred while attempting to post a tweet\n{traceback.format_exc()}')
+		webhook = DiscordWebhook(
+			url = config['discord']['webhook_url'],
+			content = f'<@{post["author"]}>',
+			avatar_url = 'https://cdn.discordapp.com/avatars/980746909222338580/840892f27a807f8ad37ed1f23f56d95d.webp?size=4096',
+			username = 'Tweet Bot'
+		)
 		embed = discord.Embed(
 			title = 'Error',
-			content = f'<@{post["author"]}>',
 			description = f'An error occurred whilst attempting to post a tweet\n{traceback.format_exc()}',
 			color = discord.Color.from_str(config['discord']['embed_colors']['error'])
 		)
