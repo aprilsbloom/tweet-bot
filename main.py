@@ -5,7 +5,7 @@ import random
 import string
 import tweepy
 import asyncio
-from discord_webhook import DiscordWebhook
+from discord_webhook import DiscordWebhook, DiscordEmbed
 from discord.ext import commands, tasks
 from utils.config import fetch_data, write_data
 from utils.logger import log
@@ -90,7 +90,7 @@ async def post_tweet():
 			write_data(config)
 			log.error(f'An error occurred while fetching gif: {post["catbox_url"]} returned a non-ok status code')
 
-			embed = discord.Embed(
+			embed = DiscordEmbed(
 				title = 'Error',
 				description = f'An error occurred while fetching gif: {post["catbox_url"]} returned a non-ok status code',
 				color = discord.Color.from_str(config['discord']['embed_colors']['success'])
@@ -116,7 +116,7 @@ async def post_tweet():
 
 		# log message to console and send message in discord
 		log.success(f'Successfully posted! https://twitter.com/i/status/{tweet[0]["id"]}')
-		embed = discord.Embed(
+		embed = DiscordEmbed(
 			title = 'Success',
 			description = f'Successfully posted [tweet](https://twitter.com/i/status/{tweet[0]["id"]})',
 			color = discord.Color.from_str(config['discord']['embed_colors']['success'])
@@ -138,7 +138,7 @@ async def post_tweet():
 			avatar_url = 'https://cdn.discordapp.com/avatars/980746909222338580/840892f27a807f8ad37ed1f23f56d95d.webp?size=4096',
 			username = 'Tweet Bot'
 		)
-		embed = discord.Embed(
+		embed = DiscordEmbed(
 			title = 'Error',
 			description = f'An error occurred whilst attempting to post a tweet\n{traceback.format_exc()}',
 			color = discord.Color.from_str(config['discord']['embed_colors']['error'])
