@@ -4,11 +4,13 @@ import traceback
 import random
 import string
 import tweepy
+import asyncio
 from discord_webhook import DiscordWebhook
 from discord.ext import commands, tasks
 from utils.config import fetch_data, write_data
 from utils.logger import log
 from utils.general import make_async_request
+from datetime import datetime
 
 class Bot(commands.Bot):
 	def __init__(self):
@@ -39,7 +41,22 @@ class Bot(commands.Bot):
 	async def on_ready(self):
 		await self.wait_until_ready()
 		log.success(f'Logged in as {self.user}.')
-		#post_tweet.start()
+
+		current_time = datetime.now()
+
+		# determine goal hour since its only 0-23, depending on the time ran it may fuck shit up
+		goal_hr = 0
+		if (current_time.hour + 1) > 23:
+			goal_hr = 0
+		else:
+			goal_hr = current_time.hour + 1
+
+		# work out the delay in seconds
+		start_time = current_time.replace(hour = goal_hr, minute = 0, second = 0)
+		delay = (start_time - current_time).total_seconds()
+		await asyncio.sleep(delay)
+
+		post_tweet.start()
 
 
 @tasks.loop(hours = 2)

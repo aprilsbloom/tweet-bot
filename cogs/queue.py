@@ -76,14 +76,6 @@ class Queue(commands.Cog):
 		# 	}
 		# )
 
-		if interaction.user.id != bot_info.owner.id:
-			return await handleResponse(
-				interaction = interaction,
-				config = config,
-				content = 'You do not have permission to run this command.',
-				responseType = 'error'
-			)
-
 		post_queue_length = len(config['twitter']['post_queue'])
 		if post_queue_length == 0:
 				return await handleResponse(
@@ -150,6 +142,14 @@ class Queue(commands.Cog):
 						replacement_embed = embed
 					)
 		elif cmd_choice.value == 'remove':
+			if interaction.user.id not in config['discord']['authed_users'] and interaction.user.id != bot_info.owner.id:
+				return await handleResponse(
+					interaction = interaction,
+					config = config,
+					content = 'You do not have permission to run this command.\nPlease ask an administrator for access if you believe this to be in error.',
+					responseType = 'error'
+				)
+
 			if url == '':
 				return await handleResponse(
 					interaction = interaction,
