@@ -121,7 +121,7 @@ async def post_tweet():
 			description = f'Successfully posted [tweet](https://twitter.com/i/status/{tweet[0]["id"]})',
 			color = discord.Color.from_str(config['discord']['embed_colors']['success'])
 		)
-		embed.set_image(post["catbox_url"])
+		embed.set_image(url = post["catbox_url"])
 		webhook.add_embed(embed)
 		webhook.execute()
 
@@ -143,7 +143,7 @@ async def post_tweet():
 			description = f'An error occurred whilst attempting to post a tweet\n{traceback.format_exc()}',
 			color = discord.Color.from_str(config['discord']['embed_colors']['error'])
 		)
-		embed.set_image(post["catbox_url"])
+		embed.set_image(url = post["catbox_url"])
 		webhook.add_embed(embed)
 		webhook.execute
 
