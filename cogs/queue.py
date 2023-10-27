@@ -1,53 +1,95 @@
 import discord
+import traceback
 from discord.ext import commands
+from discord.interactions import Interaction
 from utils.config import fetch_data, write_data
 from utils.general import handleResponse
 from typing import Optional
 
-class QueueView(discord.ui.View):
-	def __init__(self, interaction: discord.Interaction, pages: list):
-		super().__init__(timeout=None)
+class EditModal(discord.ui.Modal):
+	def __init__(self, post, title = 'Edit post'):
+		super().__init__(title = title)
+		self.config = fetch_data()
+		self.post = post
+
+		self.add_item(discord.ui.TextInput(
+			label = 'Caption',
+			default = self.post['caption'],
+			max_length = 280,
+			style = discord.TextStyle.long,
+		))
+		self.add_item(discord.ui.TextInput(
+			label = 'Alt text',
+			default = self.post['alt_text'],
+			min_length = 1,
+			max_length = 1000,
+			style = discord.TextStyle.long,
+		))
+		self.add_item(discord.ui.TextInput(
+			label = 'Gif URL',
+			default = self.post['catbox_url']
+		))
+
+	## TODO: add on_submit func in here
+
+class QueueViewBasic(discord.ui.View):
+	def __init__(self, post):
+		super().__init__()
+		self.post = post
+
+	@discord.ui.button(label = 'Delete', style = discord.ButtonStyle.red)
+	async def delete(self, interaction: discord.Interaction, _button: discord.ui.Button):
+		pass
+
+	@discord.ui.button(label = 'Edit', style = discord.ButtonStyle.grey)
+	async def edit(self, interaction: discord.Interaction, _button: discord.ui.Button):
+		await interaction.response.send_modal(EditModal(post = self.post))
+
+
+class QueueViewExtended(discord.ui.View):
+	def __init__(self, pages: list):
+		super().__init__()
 		self.pages = pages
-		self.interaction = interaction
 		self.current_page = 0
+		self.post = pages[0]['post']
+
+	@discord.ui.button(label = 'Delete', style = discord.ButtonStyle.red)
+	async def delete(self, interaction: discord.Interaction, _button: discord.ui.Button):
+		pass
+
+	@discord.ui.button(label = 'Edit', style = discord.ButtonStyle.grey)
+	async def edit(self, interaction: discord.Interaction, _button: discord.ui.Button):
+		await interaction.response.send_modal(EditModal(post = self.post))
 
 	@discord.ui.button(label='Previous', style=discord.ButtonStyle.grey, disabled=True)
 	async def previous(self, interaction: discord.Interaction, _button: discord.ui.Button):
 		self.current_page -= 1
 
 		if self.current_page == 0:
-			for i in self.children:
-				if i.label == 'Previous':
-					i.disabled = True
-				elif i.label == 'Next':
-					i.disabled = False
+			for child in self.children:
+				child.disabled = (child.label == 'Previous')
 		else:
-			for i in self.children:
-				if i.label == 'Previous':
-					i.disabled = False
-				elif i.label == 'Next':
-					i.disabled = False
+			for child in self.children:
+				child.disabled = False
 
-		await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+		self.post = self.pages[self.current_page]['post']
+		embed = self.pages[self.current_page]['embed']
+		await interaction.response.edit_message(embed=embed, view=self)
 
 	@discord.ui.button(label='Next', style=discord.ButtonStyle.grey)
 	async def next(self, interaction: discord.Interaction, _button: discord.ui.Button):
 		self.current_page += 1
 
 		if self.current_page == len(self.pages) - 1:
-			for i in self.children:
-				if i.label == 'Next':
-					i.disabled = True
-				elif i.label == 'Previous':
-					i.disabled = False
+			for child in self.children:
+				child.disabled = (child.label == 'Next')
 		else:
-			for i in self.children:
-				if i.label == 'Next':
-					i.disabled = False
-				elif i.label == 'Previous':
-					i.disabled = False
+			for child in self.children:
+				child.disabled = False
 
-		await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+		self.post = self.pages[self.current_page]['post']
+		embed = self.pages[self.current_page]['embed']
+		await interaction.response.edit_message(embed=embed, view=self)
 
 # Command
 class Queue(commands.Cog):
@@ -62,19 +104,10 @@ class Queue(commands.Cog):
 	])
 	async def queue(self, interaction: discord.Interaction, cmd_choice: discord.app_commands.Choice[str], url: Optional[str] = ''):
 		config = fetch_data()
-		bot_info = await self.bot.application_info()
+		post = config['twitter']['post_queue'][0]
 
-		# structure
-		# config['twitter']['post_queue'].append(
-		# 	{
-		# 		'original_url': clean_url,
-		# 		'catbox_url': res_catbox.text,
-		# 		'author': interaction.user.id,
-		# 		'emoji': emoji,
-		# 		'caption': caption,
-		# 		'alt_text': alt_text
-		# 	}
-		# )
+		config = fetch_data()
+		bot_info = await self.bot.application_info()
 
 		post_queue_length = len(config['twitter']['post_queue'])
 		if post_queue_length == 0:
@@ -107,15 +140,18 @@ class Queue(commands.Cog):
 					embed.set_image(url = post['catbox_url'])
 					embed.set_footer(text = f'Post {count} / {post_queue_length}')
 
-					embeds.append(embed)
+					embeds.append({
+						'embed': embed,
+						'post': post
+					})
 
 				return await handleResponse(
 					interaction = interaction,
 					config = config,
 					content = '',
 					responseType = '',
-					view = QueueView(interaction, embeds),
-					replacement_embed = embeds[0]
+					view = QueueViewExtended(embeds),
+					replacement_embed = embeds[0]['embed']
 				)
 			else:
 					post = config['twitter']['post_queue'][0]
@@ -139,6 +175,7 @@ class Queue(commands.Cog):
 						config = config,
 						content = '',
 						responseType = '',
+						view = QueueViewBasic(post),
 						replacement_embed = embed
 					)
 		elif cmd_choice.value == 'remove':
@@ -182,15 +219,15 @@ class Queue(commands.Cog):
 					)
 
 
-	@queue.error
-	async def queue_error(self, interaction: discord.Interaction, error):
-		config = fetch_data()
-		return await handleResponse(
-			interaction = interaction,
-			config = config,
-			content = f'An unknown error has occurred:\n```\n{error}\n```',
-			responseType = 'error'
-		)
+	# @queue.error
+	# async def queue_error(self, interaction: discord.Interaction, error):
+	# 	config = fetch_data()
+	# 	return await handleResponse(
+	# 		interaction = interaction,
+	# 		config = config,
+	# 		content = f'An unknown error has occurred:\n```\n{traceback.print_exc(error)}\n```',
+	# 		responseType = 'error'
+	# 	)
 
 
 # Cog setup

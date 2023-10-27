@@ -56,7 +56,7 @@ class Bot(commands.Bot):
 		delay = (start_time - current_time).total_seconds()
 		await asyncio.sleep(delay)
 
-		post_tweet.start()
+		# post_tweet.start()
 
 
 @tasks.loop(hours = 2)
