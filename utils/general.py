@@ -1,30 +1,28 @@
 import discord
 import httpx
 
+
 async def make_async_request(
 	url: str,
 	headers: dict = {},
-	method: str = 'GET',
+	method: str = "GET",
 	data: dict = {},
 	json: dict = {},
 ):
 	async with httpx.AsyncClient() as client:
-		if method == 'GET':
+		if method == "GET":
 			response = await client.request(
-				url = url,
-				headers = headers,
-				method = method,
+				url=url,
+				headers=headers,
+				method=method,
 			)
 		else:
 			response = await client.request(
-				url = url,
-				headers = headers,
-				method = method,
-				data = data,
-				json = json
+				url=url, headers=headers, method=method, data=data, json=json
 			)
 
 	return response
+
 
 async def handleResponse(
 	interaction: discord.Interaction,
@@ -38,11 +36,15 @@ async def handleResponse(
 ):
 	if replacement_embed:
 		if interaction.response.is_done():
-			return await interaction.edit_original_response(embed = replacement_embed, view = view)
+			return await interaction.edit_original_response(
+				embed=replacement_embed, view=view
+			)
 		else:
-			return await interaction.response.send_message(embed = replacement_embed, view = view)
+			return await interaction.response.send_message(
+				embed=replacement_embed, view=view
+			)
 
-	embed = discord.Embed(description = content)
+	embed = discord.Embed(description=content)
 
 	# embed title and color
 	match responseType:
@@ -57,16 +59,16 @@ async def handleResponse(
 			embed.color = discord.Color.from_str(config['discord']['embed_colors']['error'])
 
 	if image_url:
-		embed.set_image(url = image_url)
+		embed.set_image(url=image_url)
 
 	# respond with the embed
 	if view:
 		if interaction.response.is_done():
-			return await interaction.edit_original_response(embed = embed, view = view)
+			return await interaction.edit_original_response(embed=embed, view=view)
 		else:
-			return await interaction.response.send_message(embed = embed, view = view)
+			return await interaction.response.send_message(embed=embed, view=view)
 	else:
 		if interaction.response.is_done():
-			return await interaction.edit_original_response(embed = embed)
+			return await interaction.edit_original_response(embed=embed)
 		else:
-			return await interaction.response.send_message(embed = embed)
+			return await interaction.response.send_message(embed=embed)
