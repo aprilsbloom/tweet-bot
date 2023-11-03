@@ -4,17 +4,23 @@ from .logger import log
 
 
 def write_data(data):
-    with open("config.json", "w", encoding="utf8") as file:
-        file.write(json.dumps(data, indent=4))
-
+    with open("config.json", "w", encoding = "utf8") as file:
+        file.write(
+            json.dumps(
+                data,
+                indent = 4
+            )
+        )
 
 def fetch_data():
     temp_config = {
         "discord": {
             "token": "",
-            "webhook_url": "",
+            "post_webhook": "",
+            "notif_webhook": "",
             "authed_users": [],
             "emojis": {},
+            "role_to_ping": "",
             "embed_colors": {
                 "success": "#2ECC71",
                 "error": "#ff0000",
@@ -32,7 +38,7 @@ def fetch_data():
     }
 
     try:
-        with open("config.json", "r", encoding="utf8") as file:
+        with open("config.json", "r", encoding = "utf8") as file:
             temp_config.update(json.loads(file.read()))
             write_data(temp_config)
             return temp_config
