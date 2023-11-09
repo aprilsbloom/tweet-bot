@@ -35,7 +35,10 @@ class Bot(commands.Bot):
 			for file in files:
 				if file.endswith(".py"):
 					cog_path = (os.path.join(root, file).replace(os.sep, ".").rstrip(".py"))
-					await self.load_extension(cog_path)
+					try:
+						await self.load_extension(cog_path)
+					except:
+						log.error(f'Unable to load {cog_path}\n{traceback.format_exc()}')
 			for dir in dirs:
 				await self.setupCommands(os.path.join(root, dir))
 
@@ -154,7 +157,7 @@ async def post_tweet():
 		log.success(f'Successfully posted! https://twitter.com/i/status/{tweet[0]["id"]}')
 		embed = DiscordEmbed(
 			title = "Success",
-			description = f'Successfully posted! [View tweet](https://twitter.com/i/status/{tweet[0]["id"]})',
+			description = f'Successfully posted!\n[View tweet](https://twitter.com/i/status/{tweet[0]["id"]})',
 			color = discord.Color.from_str(config["discord"]["embed_colors"]["success"]).value,
 		)
 
