@@ -1,6 +1,5 @@
 from datetime import datetime
 
-
 class Logger:
     def __init__(self):
         self.red = "\033[91m"
@@ -15,11 +14,11 @@ class Logger:
 
     def info(self, text):
         current_time = self.fetch_time()
-        print(f"{current_time} {self.grey}[*]{self.reset} {text}")
+        print(f"{current_time} {self.grey}[~]{self.reset} {text}")
 
     def error(self, text):
         current_time = self.fetch_time()
-        print(f"{current_time} {self.red}[!]{self.reset} {text}")
+        print(f"{current_time} {self.red}[-]{self.reset} {text}")
 
     def warning(self, text):
         current_time = self.fetch_time()
@@ -28,6 +27,5 @@ class Logger:
     def success(self, text):
         current_time = self.fetch_time()
         print(f"{current_time} {self.green}[+]{self.reset} {text}")
-
 
 log = Logger()

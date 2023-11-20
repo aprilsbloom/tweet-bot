@@ -1,11 +1,12 @@
 import discord
 import traceback
 from discord.ext import commands
-from utils.config import fetch_data, write_data
+from utils.logger import Logger
 from utils.general import handleResponse
+from utils.config import load_config, write_config
 
+log = Logger()
 
-# Command
 class Auth(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
@@ -20,9 +21,10 @@ class Auth(commands.Cog):
 		description = 'Remove a given user\'s authentication'
 	)
 	async def auth_remove(self, interaction: discord.Interaction, user: discord.Member):
-		config = fetch_data()
+		config = load_config()
 		bot_info = await self.bot.application_info()
 
+		# only let bot owner run command
 		if interaction.user.id != bot_info.owner.id:
 			return await handleResponse(
 				interaction=interaction,
@@ -31,6 +33,7 @@ class Auth(commands.Cog):
 				responseType="error",
 			)
 
+		# if the user isn't in the list of authed users, return an error
 		if interaction.user.id not in config["discord"]["authed_users"]:
 			return await handleResponse(
 				interaction=interaction,
@@ -39,8 +42,9 @@ class Auth(commands.Cog):
 				responseType="error",
 			)
 
+		# remove the user from the list of authed users
 		config["discord"]["authed_users"].remove(interaction.user.id)
-		write_data(config)
+		write_config(config)
 
 		return await handleResponse(
 			interaction=interaction,
@@ -51,11 +55,11 @@ class Auth(commands.Cog):
 
 	@auth_remove.error
 	async def auth_remove_error(self, interaction: discord.Interaction, error):
-		config = fetch_data()
+		config = load_config()
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
-			content = f'An unknown error has occurred:\n```\n{traceback.print_exc(error)}\n```',
+			content = f'An unknown error has occurred:\n```{error}\n```',
 			responseType = 'error'
 		)
 
@@ -65,9 +69,10 @@ class Auth(commands.Cog):
 		description = 'Authenticate a given user'
 	)
 	async def auth_add(self, interaction: discord.Interaction, user: discord.Member):
-		config = fetch_data()
+		config = load_config()
 		bot_info = await self.bot.application_info()
 
+		# only let bot owner run command
 		if interaction.user.id != bot_info.owner.id:
 			return await handleResponse(
 				interaction=interaction,
@@ -76,6 +81,7 @@ class Auth(commands.Cog):
 				responseType="error",
 			)
 
+		# if the user is already in the list of authed users, return an error
 		if interaction.user.id in config["discord"]["authed_users"]:
 			return await handleResponse(
 				interaction=interaction,
@@ -84,8 +90,10 @@ class Auth(commands.Cog):
 				responseType="error",
 			)
 
+		# add the user to the list of authed users
 		config["discord"]["authed_users"].append(interaction.user.id)
-		write_data(config)
+		write_config(config)
+
 		return await handleResponse(
 			interaction=interaction,
 			config=config,
@@ -95,14 +103,14 @@ class Auth(commands.Cog):
 
 	@auth_add.error
 	async def auth_add_error(self, interaction: discord.Interaction, error):
-		config = fetch_data()
+		config = load_config()
+		log.error(f"An error has occurred while running /auth add{error}")
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
-			content = f'An unknown error has occurred:\n```\n{traceback.print_exc(error)}\n```',
+			content = f'An unknown error has occurred:\n```{error}```',
 			responseType = 'error'
 		)
 
-# Cog setup
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Auth(bot))
