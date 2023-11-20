@@ -49,9 +49,9 @@ class EditTweetModal(discord.ui.Modal):
 		config = load_config()
 		return await interaction.response.send_message(
 			embed=create_embed(
-				"Info",
+				"Success",
 				"Post has been edited.",
-				'info'
+				'success'
 			),
 			ephemeral=True
 		)
@@ -85,9 +85,9 @@ class DeleteConfirmation(discord.ui.View):
 
 		return await interaction.response.send_message(
 			embed=self.create_embed(
-				"Info",
+				"Success",
 				"Post has been deleted.",
-				'info'
+				'success'
 			),
 			ephemeral=True
 		)
@@ -131,7 +131,6 @@ class AuthedQueueViewBasic(discord.ui.View):
 		interaction: discord.Interaction,
 		_button: discord.ui.Button
 	):
-		config = load_config()
 		if not is_user_authorized(interaction.user.id, self.bot_info):
 			return await interaction.response.send_message(
 				embed = create_embed(
@@ -158,7 +157,6 @@ class AuthedQueueViewBasic(discord.ui.View):
 		interaction: discord.Interaction,
 		_button: discord.ui.Button
 	):
-		config = load_config()
 		if not is_user_authorized(interaction.user.id, self.bot_info):
 			return await interaction.response.send_message(
 				embed = create_embed(
