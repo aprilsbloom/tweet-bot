@@ -1,7 +1,7 @@
 import discord
 from cogs.queue._utils import remove_post, edit_post, delete_response, edit_response
-from utils.general import is_user_authorized, create_embed, handle_base_response
-from utils.config import load_config, write_config
+from utils.general import is_user_authorized, create_embed
+from utils.config import load_config
 
 class EditPostModal(discord.ui.Modal):
 	"""

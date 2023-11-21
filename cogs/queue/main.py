@@ -2,10 +2,8 @@ import discord
 from discord.ext import commands
 from cogs.queue._views import AuthedQueueViewBasic, AuthedQueueViewExtended
 from utils.general import error_response, handle_base_response, is_user_authorized
-from utils.logger import Logger
 from utils.config import load_config, write_config
 
-log = Logger()
 group = discord.app_commands.Group(
 	name = 'queue',
 	description = 'Commands to manage the post queue.'
