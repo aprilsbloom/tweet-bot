@@ -5,7 +5,6 @@ from utils.logger import Logger
 
 log = Logger()
 
-
 def remove_post(post):
 	"""
 	Removes a post from the queue
@@ -97,6 +96,8 @@ async def error_response(interaction: discord.Interaction, error, command_name):
 		responseType = 'error'
 	)
 
+# TODO: remove this in favor of making everything ourself
+# no need for this tbh it's just bloat and really terribly wrote lmao
 async def handle_base_response(
 	interaction: discord.Interaction,
 	config: dict,

@@ -25,7 +25,7 @@ class EditPostModal(discord.ui.Modal):
 		self.add_item(
 			discord.ui.TextInput(
 				label="Caption",
-				default=self.post["caption"],
+				default=self.post.get("caption", ""),
 				max_length=280,
 				style=discord.TextStyle.long,
 				required=False,
