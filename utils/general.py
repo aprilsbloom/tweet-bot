@@ -5,7 +5,55 @@ from utils.logger import Logger
 
 log = Logger()
 
+
+def remove_post(post):
+	"""
+	Removes a post from the queue
+
+	Args
+	----
+		- post (dict): The post to remove
+	"""
+
+	config = load_config()
+	config["twitter"]["queue"].remove(post)
+	write_config(config)
+
+def edit_post(post, args):
+	"""
+	Edits a post in the queue
+
+	Args
+	----
+		- post (dict): The post to edit
+		- args (dict): The arguments to edit the post with
+			- caption (str): The caption to set on the post
+			- alt_text (str): The alt text to set on the post
+	"""
+
+	config = load_config()
+	for tmpPost in config["twitter"]["queue"]:
+		if tmpPost["catbox_url"] == post['catbox_url']:
+			post_index = config["twitter"]["queue"].index(tmpPost)
+
+			if args.get('caption', '') == '':
+				del config['twitter']['queue'][post_index]['caption']
+
+			config["twitter"]["queue"][post_index]["alt_text"] = args.get('alt_text', '')
+			write_config(config)
+
 def create_embed(title: str, description: str, color: str):
+	"""
+	Creates an incredibly basic embed for use in responses
+
+	Args
+	----
+		- title (str): The title of the embed
+		- description (str): The description of the embed
+		- color (str): The color of the embed
+			- Either `success`, `info`, or `error`
+	"""
+
 	config = load_config()
 	return discord.Embed(
 		title=title,
@@ -27,6 +75,12 @@ def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 	return user_id in config["discord"]["authed_users"] or user_id == bot_info.owner.id
 
 async def error_response(interaction: discord.Interaction, error, command_name):
+	"""
+	Creates an incredibly basic error response for use in @command.error decorators
+
+
+	"""
+
 	config = load_config()
 	log.error(f"An error has occurred while running {command_name}\n{error}")
 	return await handle_base_response(

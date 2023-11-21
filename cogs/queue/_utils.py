@@ -56,36 +56,3 @@ async def edit_response(interaction: discord.Interaction, bot_info: discord.AppI
 		)
 
 	return await interaction.response.send_modal(EditPostModal(post = post))
-
-async def remove_post(post):
-	"""
-	Removes a post from the queue
-
-	Args
-	----
-		- post (dict): The post to remove
-	"""
-
-	config = load_config()
-	config["twitter"]["queue"].remove(post)
-	write_config(config)
-
-async def edit_post(post, args):
-	"""
-	Edits a post in the queue
-
-	Args
-	----
-		- post (dict): The post to edit
-		- args (dict): The arguments to edit the post with
-			- caption (str): The caption to set on the post
-			- alt_text (str): The alt text to set on the post
-	"""
-
-	config = load_config()
-	for tmpPost in config["twitter"]["queue"]:
-		if tmpPost["catbox_url"] == post['catbox_url']:
-			post_index = config["twitter"]["queue"].index(tmpPost)
-			config["twitter"]["queue"][post_index]["caption"] = args.get('caption', '')
-			config["twitter"]["queue"][post_index]["alt_text"] = args.get('alt_text', '')
-			write_config(config)

@@ -1,6 +1,6 @@
 import discord
-from cogs.queue._utils import remove_post, edit_post, delete_response, edit_response
-from utils.general import is_user_authorized, create_embed
+from cogs.queue._utils import delete_response, edit_response
+from utils.general import is_user_authorized, create_embed, remove_post, edit_post
 from utils.config import load_config
 
 class EditPostModal(discord.ui.Modal):
@@ -41,7 +41,7 @@ class EditPostModal(discord.ui.Modal):
 
 	# Whenever the user submits the modal, update the post config and send a message
 	async def on_submit(self, interaction: discord.Interaction):
-		await edit_post(self.post, {
+		edit_post(self.post, {
 			'caption': self.children[0].value,
 			'alt_text': self.children[1].value
 		})
@@ -82,7 +82,7 @@ class DeleteConfirmation(discord.ui.View):
 				ephemeral=True,
 			)
 
-		await remove_post(self.post)
+		remove_post(self.post)
 
 		return await interaction.response.send_message(
 			embed=self.create_embed(
@@ -167,10 +167,9 @@ class AuthedQueueViewExtended(discord.ui.View):
 	):
 		super().__init__()
 		self.pages = pages
+		self.post = self.pages[0]["post"]
 		self.bot_info = bot_info
-
 		self.current_page = 0
-		self.post = pages[0]["post"]
 
 	@discord.ui.button(label = "Delete", style = discord.ButtonStyle.red)
 	async def delete(

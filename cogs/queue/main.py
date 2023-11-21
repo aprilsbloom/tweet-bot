@@ -68,8 +68,7 @@ class Queue(commands.Cog):
 				if post.get("caption", ""):
 					embed.add_field(name = "Caption", value = post["caption"], inline = False)
 
-				if post.get("alt_text", ""):
-					embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
+				embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
 
 				author_user = post["author"]
 				author_emoji = post["emoji"]

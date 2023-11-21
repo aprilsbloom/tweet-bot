@@ -1,4 +1,10 @@
+import discord
 from discord.ext import commands
+
+group = discord.app_commands.Group(
+	name = "emoji",
+	description = "Modify or view your emoji status"
+)
 
 class Emoji(commands.Cog):
 	def __init__(self, bot: commands.Bot):
