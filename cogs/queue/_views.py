@@ -5,6 +5,8 @@ from utils.logger import Logger
 
 log = Logger()
 
+# TODO: REFACTOR LITERALLY EVERYTHING TO USE CLASS INHERITANCE RAHHHHHHHHHHHHHHHHHHHHHHHHHHH
+
 # Tweet editing modal
 class EditTweetModal(discord.ui.Modal):
 	def __init__(self, post, title="Edit post"):
@@ -13,6 +15,7 @@ class EditTweetModal(discord.ui.Modal):
 		self.post = post
 		self.add_inputs()
 
+	# Add our text inputs to the modal
 	def add_inputs(self):
 		self.add_item(
 			discord.ui.TextInput(
@@ -32,10 +35,12 @@ class EditTweetModal(discord.ui.Modal):
 			)
 		)
 
+	# Whenever the user submits the modal, update the post config and send a message
 	async def on_submit(self, interaction: discord.Interaction):
 		self.update_post_config()
 		await self.send_edit_message(interaction)
 
+	# Update the given post with the new values
 	def update_post_config(self):
 		config = load_config()
 		for post in config["twitter"]["queue"]:
@@ -45,8 +50,8 @@ class EditTweetModal(discord.ui.Modal):
 				config["twitter"]["queue"][post_index]["alt_text"] = self.children[1].value
 				write_config(config)
 
+	# Send a message to the user letting them know the post has been edited
 	async def send_edit_message(self, interaction):
-		config = load_config()
 		return await interaction.response.send_message(
 			embed=create_embed(
 				"Success",
@@ -70,6 +75,8 @@ class DeleteConfirmation(discord.ui.View):
 		_button: discord.ui.Button
 	):
 		config = load_config()
+
+		# If the user is not authorized, return an error
 		if not is_user_authorized(interaction.user.id, self.bot_info):
 			return await interaction.response.send_message(
 				embed=self.create_embed(
@@ -98,6 +105,7 @@ class DeleteConfirmation(discord.ui.View):
 		interaction: discord.Interaction,
 		_button: discord.ui.Button
 	):
+		# If the user is not authorized, return an error
 		if not is_user_authorized(interaction.user.id, self.bot_info):
 			return await interaction.response.send_message(
 				embed = self.create_embed(

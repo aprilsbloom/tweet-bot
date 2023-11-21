@@ -56,6 +56,7 @@ class Auth(commands.Cog):
 	@auth_remove.error
 	async def auth_remove_error(self, interaction: discord.Interaction, error):
 		config = load_config()
+		log.error(f"An error has occurred while running /auth remove\n{error}")
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
@@ -104,7 +105,7 @@ class Auth(commands.Cog):
 	@auth_add.error
 	async def auth_add_error(self, interaction: discord.Interaction, error):
 		config = load_config()
-		log.error(f"An error has occurred while running /auth add{error}")
+		log.error(f"An error has occurred while running /auth add\n{error}")
 		return await handleResponse(
 			interaction = interaction,
 			config = config,

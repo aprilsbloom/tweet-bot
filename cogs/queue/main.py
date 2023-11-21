@@ -1,5 +1,4 @@
 import discord
-import traceback
 from discord.ext import commands
 from cogs.queue._views import AuthedQueueViewBasic, AuthedQueueViewExtended
 from utils.general import handleResponse, is_user_authorized
@@ -27,7 +26,7 @@ class Queue(commands.Cog):
 		bot_info = await self.bot.application_info()
 		queue_length = len(config['twitter']['queue'])
 
-		# if queue is empty, return
+		# If queue is empty, return
 		if queue_length == 0:
 			return await handleResponse(
 				interaction = interaction,
@@ -36,21 +35,19 @@ class Queue(commands.Cog):
 				content = 'The queue is empty.'
 			)
 
-		# if there is only one post in the queue, return it & the basic queue view
+		# If there is only one post in the queue, return an embed with only delete/edit buttons
 		if queue_length == 1:
 			post = config["twitter"]["queue"][0]
 			embed = discord.Embed(title = "Queue list")
+
+			author_user = post["author"]
+			author_emoji = post["emoji"]
 
 			# add caption field if present
 			if post["caption"] != "":
 				embed.add_field(name = "Caption", value = post["caption"], inline = False)
 
-			# add alt text field (required)
 			embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
-
-			author_user = post["author"]
-			author_emoji = post["emoji"]
-
 			embed.add_field(
 				name = "Author",
 				value = f"**<@{author_user}>** - {author_emoji}",
@@ -65,7 +62,7 @@ class Queue(commands.Cog):
 			else:
 				return await interaction.response.send_message(embed = embed, view=AuthedQueueViewBasic(post, bot_info))
 
-		# if there are multiple posts in the queue, return an array of posts & the extended view
+		# If there are multiple posts in the queue, return an embed with multiple pages, and edit/delete buttons
 		if queue_length > 1:
 			embeds = []
 
@@ -102,7 +99,7 @@ class Queue(commands.Cog):
 	@queue_view.error
 	async def queue_view_error(self, interaction: discord.Interaction, error):
 		config = load_config()
-		log.error(f"An error has occurred while running /queue view{error}")
+		log.error(f"An error has occurred while running /queue view\n{error}")
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
@@ -116,10 +113,19 @@ class Queue(commands.Cog):
 	)
 	async def queue_remove(self, interaction: discord.Interaction, url: str):
 		config = load_config()
-		post = config["twitter"]["queue"][0]
+		queue_length = len(config["twitter"]["queue"])
 		bot_info = await self.bot.application_info()
 
-		queue_length = len(config["twitter"]["queue"])
+		# If user isn't authed, return
+		if not is_user_authorized(interaction.user.id, bot_info):
+			return await handleResponse(
+				interaction = interaction,
+				config = config,
+				content = "You do not have permission to run this command.\nPlease ask an administrator for access if you believe this to be in error.",
+				responseType = "error",
+			)
+
+		# If queue is empty, return
 		if queue_length == 0:
 			return await handleResponse(
 				interaction = interaction,
@@ -128,23 +134,7 @@ class Queue(commands.Cog):
 				responseType = "error",
 			)
 
-		if not is_user_authorized(interaction.user.id, self.bot_info):
-			return await handleResponse(
-				interaction = interaction,
-				config = config,
-				content = "You do not have permission to run this command.\nPlease ask an administrator for access if you believe this to be in error.",
-				responseType = "error",
-			)
-
-		if not url:
-			return await handleResponse(
-				interaction = interaction,
-				config = config,
-				content = "You have not entered a URL to remove from the queue.",
-				responseType = "error",
-			)
-
-		# Finding the GIF within the queue and removing it
+		# Find the post in the queue given the URL
 		foundGif = False
 		for post in config.copy()["twitter"]["queue"]:
 			if post["catbox_url"] == url:
@@ -152,6 +142,7 @@ class Queue(commands.Cog):
 				write_config(config)
 				foundGif = True
 
+		# If the post was found, return success
 		if foundGif:
 			return await handleResponse(
 				interaction=interaction,
@@ -159,6 +150,7 @@ class Queue(commands.Cog):
 				content="The URL you have entered has been successfully removed from the queue",
 				responseType="success",
 			)
+		# If the post was not found, return error
 		else:
 			await handleResponse(
 				interaction=interaction,
@@ -170,7 +162,7 @@ class Queue(commands.Cog):
 	@queue_remove.error
 	async def queue_remove_error(self, interaction: discord.Interaction, error):
 		config = load_config()
-		log.error(f"An error has occurred while running /queue remove{error}")
+		log.error(f"An error has occurred while running /queue remove\n{error}")
 		return await handleResponse(
 			interaction = interaction,
 			config = config,
