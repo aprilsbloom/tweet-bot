@@ -6,16 +6,14 @@ from utils.logger import Logger
 from utils.config import load_config, write_config
 
 log = Logger()
+group = discord.app_commands.Group(
+	name = 'queue',
+	description = 'Commands to manage the post queue.'
+)
 
 class Queue(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
-
-	group = discord.app_commands.Group(
-		name = 'queue',
-		description = 'Commands to manage the post queue.'
-	)
-
 
 	@group.command(
 		name = 'view',
