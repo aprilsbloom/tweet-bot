@@ -2,7 +2,6 @@ import discord
 from cogs.queue._views import DeleteConfirmation, EditPostModal
 from utils.general import is_user_authorized, create_embed
 from utils.config import load_config, write_config
-from utils.logger import Logger
 
 async def delete_response(interaction: discord.Interaction, bot_info: discord.AppInfo, post: dict):
 	"""

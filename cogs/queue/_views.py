@@ -1,8 +1,7 @@
 import discord
 from cogs.queue._utils import remove_post, edit_post, delete_response, edit_response
-from utils.general import is_user_authorized, create_embed, handleResponse
+from utils.general import is_user_authorized, create_embed, handle_base_response
 from utils.config import load_config, write_config
-from utils.logger import Logger
 
 class EditPostModal(discord.ui.Modal):
 	"""
@@ -49,7 +48,7 @@ class EditPostModal(discord.ui.Modal):
 		await self.send_edit_message(interaction)
 
 	# Send a message to the user letting them know the post has been edited
-	async def send_edit_message(self, interaction):
+	async def send_edit_message(self, interaction: discord.Interaction):
 		return await interaction.response.send_message(
 			embed=create_embed(
 				"Success",

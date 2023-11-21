@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from cogs.queue._views import AuthedQueueViewBasic, AuthedQueueViewExtended
-from utils.general import handleResponse, is_user_authorized
+from utils.general import error_response, handle_base_response, is_user_authorized
 from utils.logger import Logger
 from utils.config import load_config, write_config
 
@@ -26,7 +26,7 @@ class Queue(commands.Cog):
 
 		# If queue is empty, return
 		if queue_length == 0:
-			return await handleResponse(
+			return await handle_base_response(
 				interaction = interaction,
 				config = config,
 				responseType = 'info',
@@ -67,10 +67,11 @@ class Queue(commands.Cog):
 			for count, post in enumerate(config["twitter"]["queue"], start=1):
 				embed = discord.Embed(title = "Queue list")
 
-				if post["caption"] != "":
+				if post.get("caption", ""):
 					embed.add_field(name = "Caption", value = post["caption"], inline = False)
 
-				embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
+				if post.get("alt_text", ""):
+					embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
 
 				author_user = post["author"]
 				author_emoji = post["emoji"]
@@ -96,14 +97,7 @@ class Queue(commands.Cog):
 
 	@queue_view.error
 	async def queue_view_error(self, interaction: discord.Interaction, error):
-		config = load_config()
-		log.error(f"An error has occurred while running /queue view\n{error}")
-		return await handleResponse(
-			interaction = interaction,
-			config = config,
-			content = f'An unknown error has occurred:\n```{error}\n```',
-			responseType = 'error'
-		)
+		return await error_response(interaction, error, '/queue view')
 
 	@group.command(
 		name = 'remove',
@@ -116,7 +110,7 @@ class Queue(commands.Cog):
 
 		# If user isn't authed, return
 		if not is_user_authorized(interaction.user.id, bot_info):
-			return await handleResponse(
+			return await handle_base_response(
 				interaction = interaction,
 				config = config,
 				content = "You do not have permission to run this command.\nPlease ask an administrator for access if you believe this to be in error.",
@@ -125,7 +119,7 @@ class Queue(commands.Cog):
 
 		# If queue is empty, return
 		if queue_length == 0:
-			return await handleResponse(
+			return await handle_base_response(
 				interaction = interaction,
 				config = config,
 				content = "The tweet queue is empty. Please try again later",
@@ -142,7 +136,7 @@ class Queue(commands.Cog):
 
 		# If the post was found, return success
 		if foundGif:
-			return await handleResponse(
+			return await handle_base_response(
 				interaction=interaction,
 				config=config,
 				content="The URL you have entered has been successfully removed from the queue",
@@ -150,7 +144,7 @@ class Queue(commands.Cog):
 			)
 		# If the post was not found, return error
 		else:
-			await handleResponse(
+			await handle_base_response(
 				interaction=interaction,
 				config=config,
 				content="The URL you have entered was not found in the queue.",
@@ -159,14 +153,7 @@ class Queue(commands.Cog):
 
 	@queue_remove.error
 	async def queue_remove_error(self, interaction: discord.Interaction, error):
-		config = load_config()
-		log.error(f"An error has occurred while running /queue remove\n{error}")
-		return await handleResponse(
-			interaction = interaction,
-			config = config,
-			content = f'An unknown error has occurred:\n```{error}\n```',
-			responseType = 'error'
-		)
+		return await error_response(interaction, error, '/queue remove')
 
 
 async def setup(bot: commands.Bot):

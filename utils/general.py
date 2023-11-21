@@ -1,8 +1,11 @@
 import discord
 from typing import Optional, Union
-from utils.config import load_config
+from utils.config import load_config, write_config
+from utils.logger import Logger
 
-def create_embed(title, description, color):
+log = Logger()
+
+def create_embed(title: str, description: str, color: str):
 	config = load_config()
 	return discord.Embed(
 		title=title,
@@ -23,7 +26,17 @@ def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 	config = load_config()
 	return user_id in config["discord"]["authed_users"] or user_id == bot_info.owner.id
 
-async def handleResponse(
+async def error_response(interaction: discord.Interaction, error, command_name):
+	config = load_config()
+	log.error(f"An error has occurred while running {command_name}\n{error}")
+	return await handle_base_response(
+		interaction = interaction,
+		config = config,
+		content = f'An unknown error has occurred:\n```{error}\n```',
+		responseType = 'error'
+	)
+
+async def handle_base_response(
 	interaction: discord.Interaction,
 	config: dict,
 	responseType: str,

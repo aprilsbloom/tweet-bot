@@ -1,7 +1,5 @@
 import discord
-import traceback
 from discord.ext import commands
-from utils.logger import Logger
 from utils.config import load_config, write_config
 
 class Tweet(commands.Cog):
