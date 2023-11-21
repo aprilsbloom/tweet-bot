@@ -1,3 +1,4 @@
+from ast import Delete
 import discord
 from cogs.queue._utils import delete_response, edit_response
 from utils.general import is_user_authorized, create_embed, remove_post, edit_post
@@ -63,7 +64,6 @@ class DeleteConfirmation(discord.ui.View):
 		super().__init__()
 		self.post = post
 		self.bot_info = bot_info
-		self.create_embed = self.create_embed
 
 	@discord.ui.button(label = "Yes", style = discord.ButtonStyle.red)
 	async def deletion_confirmed(
@@ -74,7 +74,7 @@ class DeleteConfirmation(discord.ui.View):
 		# If the user is not authorized, return an error
 		if not is_user_authorized(interaction.user.id, self.bot_info):
 			return await interaction.response.send_message(
-				embed=self.create_embed(
+				embed=create_embed(
 					"Error",
 					"You do not have permission to delete posts.\nPlease ask an administrator for access if you believe this to be in error.",
 					'error'
@@ -85,7 +85,7 @@ class DeleteConfirmation(discord.ui.View):
 		remove_post(self.post)
 
 		return await interaction.response.send_message(
-			embed=self.create_embed(
+			embed=create_embed(
 				"Success",
 				"Post has been deleted.",
 				'success'
@@ -102,7 +102,7 @@ class DeleteConfirmation(discord.ui.View):
 		# If the user is not authorized, return an error
 		if not is_user_authorized(interaction.user.id, self.bot_info):
 			return await interaction.response.send_message(
-				embed = self.create_embed(
+				embed = create_embed(
 					'Error',
 					'You do not have permission to interact with this command.\nPlease ask an administrator for access if you believe this to be in error.',
 					'error'
@@ -111,7 +111,7 @@ class DeleteConfirmation(discord.ui.View):
 			)
 
 		await interaction.response.send_message(
-			embed = self.create_embed(
+			embed = create_embed(
 				'Info',
 				'Post was not deleted.',
 				'info'
@@ -139,7 +139,7 @@ class AuthedQueueViewBasic(discord.ui.View):
 		interaction: discord.Interaction,
 		_
 	):
-		return await delete_response(interaction, self.bot_info, self.post)
+		return await delete_response(interaction, self.bot_info, self.post, DeleteConfirmation)
 
 	@discord.ui.button(label = "Edit", style = discord.ButtonStyle.grey)
 	async def edit(
@@ -147,7 +147,7 @@ class AuthedQueueViewBasic(discord.ui.View):
 		interaction: discord.Interaction,
 		_
 	):
-		return await edit_response(interaction, self.bot_info, self.post)
+		return await edit_response(interaction, self.bot_info, self.post, EditPostModal)
 
 class AuthedQueueViewExtended(discord.ui.View):
 	"""
@@ -178,11 +178,11 @@ class AuthedQueueViewExtended(discord.ui.View):
 		discord.Interaction,
 		_
 	):
-		return await delete_response(interaction, self.bot_info, self.post)
+		return await delete_response(interaction, self.bot_info, self.post, DeleteConfirmation)
 
 	@discord.ui.button(label = "Edit", style = discord.ButtonStyle.grey)
 	async def edit(self, interaction: discord.Interaction, _):
-		return await edit_response(interaction, self.bot_info, self.post)
+		return await edit_response(interaction, self.bot_info, self.post, EditPostModal)
 
 	@discord.ui.button(label = "Previous", style = discord.ButtonStyle.grey, disabled = True)
 	async def previous(

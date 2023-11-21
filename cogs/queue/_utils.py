@@ -1,9 +1,8 @@
 import discord
-from cogs.queue._views import DeleteConfirmation, EditPostModal
 from utils.general import is_user_authorized, create_embed
 from utils.config import load_config, write_config
 
-async def delete_response(interaction: discord.Interaction, bot_info: discord.AppInfo, post: dict):
+async def delete_response(interaction: discord.Interaction, bot_info: discord.AppInfo, post: dict, view: discord.ui.View):
 	"""
 	Returns the base response to delete a post
 
@@ -30,11 +29,11 @@ async def delete_response(interaction: discord.Interaction, bot_info: discord.Ap
 			"Are you sure you want to delete this post?",
 			'info'
 		),
-		view = DeleteConfirmation(post = post, bot_info = bot_info),
+		view = view(post = post, bot_info = bot_info),
 		ephemeral = True
 	)
 
-async def edit_response(interaction: discord.Interaction, bot_info: discord.AppInfo, post: dict):
+async def edit_response(interaction: discord.Interaction, bot_info: discord.AppInfo, post: dict, view: discord.ui.View):
 	"""
 	Returns the modal to edit a post
 
@@ -55,4 +54,4 @@ async def edit_response(interaction: discord.Interaction, bot_info: discord.AppI
 			ephemeral = True
 		)
 
-	return await interaction.response.send_modal(EditPostModal(post = post))
+	return await interaction.response.send_modal(view(post = post))

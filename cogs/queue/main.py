@@ -4,14 +4,16 @@ from cogs.queue._views import AuthedQueueViewBasic, AuthedQueueViewExtended
 from utils.general import error_response, handle_base_response, is_user_authorized
 from utils.config import load_config, write_config
 
-group = discord.app_commands.Group(
-	name = 'queue',
-	description = 'Commands to manage the post queue.'
-)
+
 
 class Queue(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
+
+	group = discord.app_commands.Group(
+		name = 'queue',
+		description = 'Commands to manage the post queue.'
+	)
 
 	@group.command(
 		name = 'view',

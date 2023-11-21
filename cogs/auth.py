@@ -3,14 +3,16 @@ from discord.ext import commands
 from utils.general import handle_base_response, error_response
 from utils.config import load_config, write_config
 
-group = discord.app_commands.Group(
-	name = "auth",
-	description = "Modify a user's authentication status"
-)
+
 
 class Auth(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
+
+	group = discord.app_commands.Group(
+		name = "auth",
+		description = "Modify a user's authentication status"
+	)
 
 	@group.command(
 		name = 'remove',
