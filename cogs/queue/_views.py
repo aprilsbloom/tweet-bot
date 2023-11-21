@@ -28,6 +28,7 @@ class EditPostModal(discord.ui.Modal):
 				default=self.post["caption"],
 				max_length=280,
 				style=discord.TextStyle.long,
+				required=False,
 			)
 		)
 		self.add_item(

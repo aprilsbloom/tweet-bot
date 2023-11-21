@@ -32,15 +32,22 @@ def edit_post(post, args):
 	"""
 
 	config = load_config()
+	have_found_post = False
+	found_post = None
 	for tmpPost in config["twitter"]["queue"]:
 		if tmpPost["catbox_url"] == post['catbox_url']:
-			post_index = config["twitter"]["queue"].index(tmpPost)
+			have_found_post = True
+			found_post = tmpPost
+			break
 
-			if args.get('caption', '') == '':
-				del config['twitter']['queue'][post_index]['caption']
+	if have_found_post:
+		post_index = config["twitter"]["queue"].index(found_post)
 
-			config["twitter"]["queue"][post_index]["alt_text"] = args.get('alt_text', '')
-			write_config(config)
+		if args.get('caption', '') == '':
+			del config['twitter']['queue'][post_index]['caption']
+
+		config["twitter"]["queue"][post_index]["alt_text"] = args.get('alt_text', '')
+		write_config(config)
 
 def create_embed(title: str, description: str, color: str):
 	"""

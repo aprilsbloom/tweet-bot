@@ -35,9 +35,8 @@ class Queue(commands.Cog):
 
 		# If there is only one post in the queue, return an embed with only delete/edit buttons
 		if queue_length == 1:
+			embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(config["discord"]["embed_colors"]["info"]))
 			post = config["twitter"]["queue"][0]
-			embed = discord.Embed(title = "Queue list")
-
 			author_user = post["author"]
 			author_emoji = post["emoji"]
 
@@ -53,7 +52,6 @@ class Queue(commands.Cog):
 			)
 			embed.add_field(name = "Gif URL", value = post["catbox_url"])
 			embed.set_image(url = post["catbox_url"])
-			embed.set_footer(text = f"Post {queue_length} / {queue_length}")
 
 			if interaction.response.is_done():
 				return await interaction.edit_original_response(embed = embed, view=AuthedQueueViewBasic(post, bot_info))
@@ -65,16 +63,14 @@ class Queue(commands.Cog):
 			embeds = []
 
 			for count, post in enumerate(config["twitter"]["queue"], start=1):
-				embed = discord.Embed(title = "Queue list")
+				embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(config["discord"]["embed_colors"]["info"]))
+				author_user = post["author"]
+				author_emoji = post["emoji"]
 
 				if post.get("caption", ""):
 					embed.add_field(name = "Caption", value = post["caption"], inline = False)
 
 				embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
-
-				author_user = post["author"]
-				author_emoji = post["emoji"]
-
 				embed.add_field(
 					name = "Author",
 					value = f"**<@{author_user}>** - {author_emoji}",
