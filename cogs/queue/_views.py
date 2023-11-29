@@ -1,4 +1,3 @@
-from ast import Delete
 import discord
 from cogs.queue._utils import delete_response, edit_response
 from utils.general import is_user_authorized, create_embed, remove_post, edit_post
@@ -119,6 +118,7 @@ class DeleteConfirmation(discord.ui.View):
 			),
 			ephemeral = True
 		)
+
 
 class AuthedQueueViewBasic(discord.ui.View):
 	"""

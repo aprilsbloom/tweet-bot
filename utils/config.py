@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Union, Final, Optional
 
 DEFAULT_CFG: Final = {
+	"userhash": "enter a randomly generated string here",
 	"discord": {
 		"token": "",
 		"authed_users": [],

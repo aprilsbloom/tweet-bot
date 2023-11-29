@@ -1,3 +1,4 @@
+import traceback
 import discord
 from typing import Optional, Union
 from utils.config import load_config, write_config
@@ -44,6 +45,8 @@ def edit_post(post, args):
 
 		if args.get('caption', '') == '':
 			del config['twitter']['queue'][post_index]['caption']
+		else:
+			config["twitter"]["queue"][post_index]["caption"] = args.get('caption', '')
 
 		config["twitter"]["queue"][post_index]["alt_text"] = args.get('alt_text', '')
 		write_config(config)
@@ -92,8 +95,8 @@ async def error_response(interaction: discord.Interaction, error, command_name):
 	return await handle_base_response(
 		interaction = interaction,
 		config = config,
+		responseType = 'error',
 		content = f'An unknown error has occurred:\n```{error}\n```',
-		responseType = 'error'
 	)
 
 # TODO: remove this in favor of making everything ourself
@@ -145,8 +148,8 @@ async def handle_base_response(
 	# respond with the embed
 	try:
 		if interaction.response.is_done():
-			return await interaction.edit_original_response(embed = embed, ephemeral=ephemeral)
+			return await interaction.edit_original_response(embed = embed)
 		else:
 			return await interaction.response.send_message(embed = embed, ephemeral=ephemeral)
-	except:
-		pass
+	except Exception as e:
+		print(traceback.format_exc())
