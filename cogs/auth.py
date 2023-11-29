@@ -9,15 +9,9 @@ class Auth(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
 
-	group = discord.app_commands.Group(
-		name = "auth",
-		description = "Modify a user's authentication status"
-	)
+	group = discord.app_commands.Group(name = "auth", description = "Modify a user's authentication status")
 
-	@group.command(
-		name = 'remove',
-		description = "Remove a given user's authentication"
-	)
+	@group.command(name = 'remove', description = "Remove a given user's authentication")
 	async def auth_remove(self, interaction: discord.Interaction, user: discord.Member):
 		config = load_config()
 		bot_info = await self.bot.application_info()
@@ -55,10 +49,8 @@ class Auth(commands.Cog):
 	async def auth_remove_error(self, interaction: discord.Interaction, error):
 		return await error_response(interaction, error, '/auth remove')
 
-	@group.command(
-		name = 'add',
-		description = 'Authenticate a given user'
-	)
+
+	@group.command(name = 'add', description = 'Authenticate a given user')
 	async def auth_add(self, interaction: discord.Interaction, user: discord.Member):
 		config = load_config()
 		bot_info = await self.bot.application_info()

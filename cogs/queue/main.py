@@ -10,15 +10,9 @@ class Queue(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
 
-	group = discord.app_commands.Group(
-		name = 'queue',
-		description = 'Commands to manage the post queue.'
-	)
+	group = discord.app_commands.Group(name = 'queue', description = 'Commands to manage the post queue.')
 
-	@group.command(
-		name = 'view',
-		description = 'View the post queue.',
-	)
+	@group.command(name = 'view', description = 'View the post queue.')
 	async def queue_view(self, interaction: discord.Interaction):
 		config = load_config()
 		bot_info = await self.bot.application_info()
@@ -94,10 +88,8 @@ class Queue(commands.Cog):
 	async def queue_view_error(self, interaction: discord.Interaction, error):
 		return await error_response(interaction, error, '/queue view')
 
-	@group.command(
-		name = 'remove',
-		description = "Remove an item from the queue"
-	)
+
+	@group.command(name = 'remove', description = "Remove an item from the queue")
 	async def queue_remove(self, interaction: discord.Interaction, url: str):
 		config = load_config()
 		queue_length = len(config["twitter"]["queue"])

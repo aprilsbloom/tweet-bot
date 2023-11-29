@@ -176,6 +176,7 @@ class Tweet(commands.Cog):
 	async def tweet_error(self, interaction: discord.Interaction, error):
 		await error_response(interaction, error, '/tweet')
 
+
 	async def find_real_url(self, url: str) -> Union[str, None]:
 		client = AsyncClient()
 		clean_url = re.sub(CLEAN_URL_REGEX, "", url)
