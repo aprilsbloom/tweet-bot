@@ -2,27 +2,7 @@ import json
 import os
 from pathlib import Path
 from typing import Union, Final, Optional
-
-DEFAULT_CFG: Final = {
-	"userhash": "enter a randomly generated string here",
-	"discord": {
-		"token": "",
-		"authed_users": [],
-		"emojis": {},
-		"embed_colors": {
-			"success": "#2ECC71",
-			"error": "#ff0000",
-			"info": "#3498DB",
-		},
-	},
-	"twitter": {
-		"consumer_key": "",
-		"consumer_secret": "",
-		"access_token": "",
-		"access_token_secret": "",
-		"queue": [],
-	}
-}
+from utils.constants import DEFAULT_CFG
 
 def merge_objects(obj1, obj2):
 	# create new object that we merge to

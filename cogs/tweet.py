@@ -6,18 +6,9 @@ from httpx import AsyncClient
 from cogs.queue._views import AuthedQueueViewBasic
 from utils.general import is_user_authorized, create_embed, handle_base_response, error_response
 from utils.config import load_config, write_config
+from utils.constants import BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, FILESIZE_LIMIT_TWITTER, TENOR_REGEX
 
-TENOR_REGEX = r"(?i)\b((https?://media[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
-CLEAN_URL_REGEX = r"\?.*$"
 
-FILESIZE_LIMIT_TWITTER = 15728640
-CATBOX_URL = "https://catbox.moe/user/api.php"
-BASE_HEADERS = {
-	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-	"Accept": "*/*",
-	"Accept-Encoding": "gzip, deflate, br",
-	"Connection": "keep-alive",
-}
 
 class Tweet(commands.Cog):
 	def __init__(self, bot: commands.Bot):
