@@ -15,34 +15,52 @@ FILESIZE_LIMIT_TWITTER = 15728640
 # Catbox.moe API URL
 CATBOX_URL = "https://catbox.moe/user/api.php"
 
+# Cat related hashtags
+CAT_HASHTAGS = ['gifkitties', 'cat', 'catlife', 'catlove', 'catlover', 'catlovers', 'catoftheday', 'cats', 'cats_of_instagram', 'catsoftheworld']
+
 # Default configuration file
 DEFAULT_CFG: Final = {
 	"userhash": "enter a randomly generated string here",
+	"queue": [],
 	"discord": {
 		"token": "",
 		"post_notifs": {
 			"enabled": True,
 			"webhook": "",
-			"role_to_ping": "",
+			"role_to_ping": ""
 		},
 		"misc_notifs": {
 			"enabled": True,
-			"webhook": "",
+			"webhook": ""
 		},
 		"authed_users": [],
 		"emojis": {},
 		"embed_colors": {
 			"success": "#2ECC71",
 			"error": "#ff0000",
-			"info": "#3498DB",
-		},
+			"info": "#3498DB"
+		}
 	},
 	"twitter": {
+		"enabled": True,
 		"consumer_key": "",
 		"consumer_secret": "",
 		"access_token": "",
-		"access_token_secret": "",
-		"queue": [],
+		"access_token_secret": ""
+	},
+	"tumblr": {
+		"enabled": True,
+		"consumer_key": "",
+		"consumer_secret": "",
+		"oauth_token": "",
+		"oauth_secret": ""
+	},
+	"mastodon": {
+		"enabled": True,
+		"api_url": "",
+		"client_id": "",
+		"client_secret": "",
+		"access_token": ""
 	}
 }
 

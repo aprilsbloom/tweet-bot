@@ -16,7 +16,7 @@ class Queue(commands.Cog):
 	async def queue_view(self, interaction: discord.Interaction):
 		config = load_config()
 		bot_info = await self.bot.application_info()
-		queue_length = len(config['twitter']['queue'])
+		queue_length = len(config['queue'])
 
 		# If queue is empty, return
 		if queue_length == 0:
@@ -30,7 +30,7 @@ class Queue(commands.Cog):
 		# If there is only one post in the queue, return an embed with only delete/edit buttons
 		if queue_length == 1:
 			embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(config["discord"]["embed_colors"]["info"]))
-			post = config["twitter"]["queue"][0]
+			post = config['queue'][0]
 			author_user = post["author"]
 			author_emoji = post["emoji"]
 
@@ -56,7 +56,7 @@ class Queue(commands.Cog):
 		if queue_length > 1:
 			embeds = []
 
-			for count, post in enumerate(config["twitter"]["queue"], start=1):
+			for count, post in enumerate(config['queue'], start=1):
 				embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(config["discord"]["embed_colors"]["info"]))
 				author_user = post["author"]
 				author_emoji = post["emoji"]
@@ -92,7 +92,7 @@ class Queue(commands.Cog):
 	@group.command(name = 'remove', description = "Remove an item from the queue")
 	async def queue_remove(self, interaction: discord.Interaction, url: str):
 		config = load_config()
-		queue_length = len(config["twitter"]["queue"])
+		queue_length = len(config['queue'])
 		bot_info = await self.bot.application_info()
 
 		# If user isn't authed, return
@@ -117,7 +117,7 @@ class Queue(commands.Cog):
 		foundGif = False
 		for post in config.copy()["twitter"]["queue"]:
 			if post["catbox_url"] == url:
-				config["twitter"]["queue"].remove(post)
+				config['queue'].remove(post)
 				write_config(config)
 				foundGif = True
 

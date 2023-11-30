@@ -4,3 +4,9 @@ config*.json
 # python cache
 **/*.py[cod]
 **/__pycache__
+
+# job directory (for storing gifs)
+jobs/
+
+# debug main copy
+main copy.py

@@ -79,7 +79,7 @@ class Tweet(commands.Cog):
 			)
 
 		# Check to see if the gif is already in the queue
-		for post in config["twitter"]["queue"]:
+		for post in config['queue']:
 			if post["original_url"] == url:
 				return await handle_base_response(
 					interaction = interaction,
@@ -138,7 +138,7 @@ class Tweet(commands.Cog):
 			"caption": caption,
 			"alt_text": alt_text,
 		}
-		config["twitter"]["queue"].append(post)
+		config['queue'].append(post)
 		write_config(config)
 
 		# Return a success message
@@ -192,7 +192,7 @@ class Tweet(commands.Cog):
 
 	async def check_file_size(self, url: str) -> bool:
 		client = AsyncClient()
-		res = await client.head(url, headers = BASE_HEADERS)
+		res = await client.head(url, headers = BASE_HEADERS, timeout = 30)
 		content_length_header = None
 
 		for header in res.headers:
@@ -201,7 +201,7 @@ class Tweet(commands.Cog):
 				break
 
 		if not content_length_header:
-			new_res = await client.get(url, headers = BASE_HEADERS)
+			new_res = await client.get(url, headers = BASE_HEADERS, timeout = 30)
 			await client.aclose()
 			return True if int(len(new_res.content)) <= FILESIZE_LIMIT_TWITTER else False
 

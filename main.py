@@ -1,17 +1,24 @@
+import asyncio
+import shutil
 import discord
 import os
 import traceback
 import random
 import string
+import requests
 import tweepy
+import pytumblr
+import aiohttp
+from mastodon import Mastodon
 from pathlib import Path
 from typing import Union
 from discord.ext import commands, tasks
 from httpx import AsyncClient, Response
+from tenacity import retry, stop_after_attempt, retry_if_result
 from utils.config import load_config, write_config
 from utils.general import create_embed
 from utils.logger import Logger
-from utils.constants import BASE_HEADERS, POST_WB_INFO, MISC_WB_INFO
+from utils.constants import BASE_HEADERS, CAT_HASHTAGS, POST_WB_INFO, MISC_WB_INFO
 
 log = Logger()
 config = load_config()
@@ -57,156 +64,282 @@ class Bot(commands.Bot):
 		await self.wait_until_ready()
 		log.success(f"Logged in as {self.user}.")
 
+		await asyncio.sleep(30)
+		post_loop.start()
+
 
 @tasks.loop(hours = 2)
-async def post_tweet_loop():
+async def post_loop():
 	config = load_config()
 	client = AsyncClient()
+	session = aiohttp.ClientSession()
 
-	if len(config['twitter']['queue'] == 0):
-		return log.info("No tweets in queue. Skipping...")
+	post = config['queue'][0]
+	caption = post.get('caption', '')
+	alt_text = post.get('alt_text', '')
+	author = post.get('author', '')
+	emoji = post.get('emoji', '')
+	catbox_url = post.get('catbox_url', '')
+	orig_url = post.get('original_url', '')
 
-	post = config['twitter']['queue'][0]
+	if len(config['queue']) == 0:
+		return log.info("No posts in queue. Skipping...")
+
+	# Initialize job directory and assign random ID
+	if os.path.exists("jobs/"):
+		shutil.rmtree("jobs/")
+
+	os.mkdir("jobs")
+	job_id = "".join(random.choice(string.ascii_letters + string.digits) for i in range(32))
+
+	# Initialize the webhook clients in a try/catch block in the event that it errors
 	post_wb: discord.Webhook = ""
 	misc_wb: discord.Webhook = ""
 
-	# Initialize the webhook clients in a try/catch block in the event that it errors
 	try:
-		post_wb = discord.Webhook.from_url(config['discord']['post_notifs']['webhook'])
-		misc_wb = discord.Webhook.from_url(config['discord']['misc_notifs']['webhook'])
+		post_wb = discord.Webhook.from_url(config['discord']['post_notifs']['webhook'], session = session)
+		misc_wb = discord.Webhook.from_url(config['discord']['misc_notifs']['webhook'], session = session)
 	except:
 		log.error(f"An error occurred while initializing the webhook client\n{traceback.format_exc()}")
 		return
 
+	# Download and write the gif to the system before posting, in order to ensure everything is legitimate
+	# If an error occurs, i.e the web server times out, we want to catch it
+	res: Response = ""
+
 	try:
-		# Initialize the jobs directory and the randomly generated ID, as we are using tweepy's file upload feature
-		if not os.path.exists("jobs/"):
-			os.mkdir("jobs")
+		res = await client.get(catbox_url, headers = BASE_HEADERS, timeout = 30)
+	except:
+		log.error(f"An error occurred while downloading the gif\n{traceback.format_exc()}")
+		embed = discord.Embed(title = "Error", description = "An error occurred while downloading the gif.", color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
+		embed.add_field(name = "Error", value = f"```{traceback.format_exc()}```", inline = False)
+		return await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
-		job_id = "".join(random.choice(string.ascii_letters + string.digits) for i in range(32))
-		res: Response = ""
+	# If the server returns a non-ok status code, we want to respond accordingly as well
+	if res.status_code != 200:
+		err_hdr = 'An error occurred while downloading the gif'
+		err_dsc = f"The server returned a non-ok status code ({res.status_code})."
 
-		caption = post.get("caption", "")
-		alt_text = post.get("alt_text")
-		catbox_url = post.get("catbox_url")
-		emoji = post.get("emoji")
+		log.error(f"{err_hdr}\n{err_dsc}")
+		embed = discord.Embed(title = "Error", description = err_hdr, color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
+		embed.add_field(name = "Error", value = f"```{err_dsc}```", inline = False)
+		await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
-		# If an error occurs, i.e the web server times out, we want to catch it
-		try:
-			res = await client.get(post['catbox_url'], headers = BASE_HEADERS)
-		except:
-			log.error(f"An error occurred while downloading the gif\n{traceback.format_exc()}")
-			embed = discord.Embed(title = "Error", description = "An error occurred while downloading the gif.", color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
-			embed.add_field(name = "Error", value = f"```{traceback.format_exc()}```", inline = False)
-			return await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
+		# We also want to remove the tweet from the queue, so that the bot doesn't attempt to post it again
+		config['queue'].pop(0)
+		write_config(config)
+		return
 
+	# Write the gif to the jobs directory
+	with open(f"jobs/{job_id}.gif", "wb") as f:
+		f.write(res.content)
 
-		# If the server returns a non-ok status code, we want to respond accordingly as well
-		if res.status_code != 200:
-			err_hdr = 'An error occurred while downloading the gif'
-			err_dsc = f"The server returned a non-ok status code ({res.status_code})."
+	# Now, begin the actual posting.
+	# Assign the post data to individual variables in order to make accessing the properties easier
+	res_data = {}
 
-			log.error(f"{err_hdr}\n{err_dsc}")
-			embed = discord.Embed(title = "Error", description = err_hdr, color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
-			embed.add_field(name = "Error", value = f"```{err_dsc}```", inline = False)
+	# Twitter
+	if config["twitter"]["enabled"]:
+		res_data["twitter"] = await post_twitter(config, post, job_id)
+
+	await asyncio.sleep(5)
+
+	# Tumblr
+	if config["tumblr"]["enabled"]:
+		res_data["tumblr"] = await post_tumblr(config, post, job_id)
+
+	await asyncio.sleep(5)
+
+	# Mastodon
+	# if config["mastodon"]["enabled"]:
+	# 	res_data["mastodon"] = await post_mastodon(config, post, job_id)
+
+	# await asyncio.sleep(5)
+
+	# Check to see the results of each function call, if any of them are false or None we don't want to count them
+	# If the platforms array is empty, we want to return an error
+	platforms = [key.title() for key in res_data.keys() if res_data[key] != False and res_data[key] != None]
+	if len(platforms) == 0:
+		log.error(f"An error occurred while posting the gif\nAll platforms failed to post.")
+
+		if config["discord"]["misc_notifs"]["enabled"]:
+			embed = discord.Embed(title = "Error", description = "An error occurred while posting the gif.\nAll platforms failed to post.", color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
 			await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
-			# We also want to remove the tweet from the queue, so that the bot doesn't attempt to post it again
-			config['twitter']['queue'].pop(0)
-			write_config(config)
-			return
+		return
 
+	embed = discord.Embed(title = "New post", color = discord.Color.from_str(config["discord"]['embed_colors']['success']))
+	embed.set_image(url = orig_url)
 
-		# Write the gif to the jobs directory
-		with open(f"jobs/{job_id}.gif", "wb") as f:
-			f.write(res.content)
+	if caption != '':
+		embed.add_field(name = "Caption", value = caption, inline = False)
 
-		mediaID = tw_v1.chunked_upload(
-			filename = f"jobs/{job_id}.gif",
-		 	media_category = "tweet_gif"
-		).media_id_string
+	embed.add_field(name = "Alt text", value = alt_text, inline = False)
+	embed.add_field(name = "Gif URL", value = catbox_url, inline = False)
+	embed.add_field(name = "Posted by", value = f'<@!{author}> - {emoji}', inline = False)
 
-		if alt_text != "":
-			tw_v1.create_media_metadata(
-				media_id = mediaID,
-				alt_text = alt_text
-			)
+	linksStr = '\n'.join([f'- [{platform_name}]({res_data[platform_name.lower()]})' for platform_name in platforms])
+	embed.add_field(name = "Post links", value = linksStr, inline = False)
 
-		# post tweet and reply to it with url & emoji
-		tweet = tw_v2.create_tweet(
-			text = caption,
-			media_ids = [mediaID]
-		)
+	# Send the embed to the post notification webhook
+	if config["discord"]["post_notifs"]["enabled"]:
+		role_to_ping = config["discord"]["post_notifs"]["role_to_ping"]
+		await post_wb.send(content = f"<@&{role_to_ping}>", embed = embed, username = POST_WB_INFO['username'], avatar_url = POST_WB_INFO['pfp'])
 
-		tw_v2.create_tweet(
-			text = f"{catbox_url} - {emoji}",
-			in_reply_to_tweet_id = post[0]["id"]
-		)
+	await asyncio.sleep(3)
 
-		# log message to console and send message in discord
-		log.success(f'Successfully posted! https://twitter.com/i/status/{tweet[0]["id"]}')
-		embed = create_embed(
-			"Success",
-			f"Successfully posted! https://twitter.com/i/status/{tweet[0]['id']}",
-			"success"
-		)
+	# Send the embed to the misc notification webhook to alert the author that the post was successful
+	if config["discord"]["misc_notifs"]["enabled"]:
+		await misc_wb.send(content = f"<@!{author}>", embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
-		if caption != "":
-			embed.add_embed_field(
-				name = 'Caption',
-				value = caption,
-				inline = False,
-			)
+	# Remove post from queue now that its been posted
+	if len(config['queue']) > 0:
+		config['queue'].pop(0)
 
-		embed.add_embed_field(
-			name = 'Alt text',
-			value = alt_text,
-			inline = False
-		)
+	write_config(config)
 
-		embed.add_embed_field(
-			name = 'Gif URL',
-			value = catbox_url,
-			inline = False,
-		)
-
-		embed.set_image(url = catbox_url)
-
-		# Send a message to the post notifications channel if enabled
-		if config['discord']['post_notifs']['enabled']:
-			post_wb.add_embed(embed = embed)
-			post_wb.send(embed = embed, username = POST_WB_INFO['username'], avatar_url = POST_WB_INFO['pfp'])
-
-		# Send a message within the server where the tweets are posted from if enabled
-		if config['discord']['misc_notifs']['enabled']:
-			misc_wb.add_embed(embed = embed)
-			misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
-
-		# remove post from queue now that its been posted
-		config["twitter"]["post_queue"].remove(post)
-		write_config(config)
-	except:
-		log.error(f"An error occurred within the tweet-posting loop\n{traceback.format_exc()}")
-
+	# Close the sessions since we're done with them
 	await client.aclose()
+	await session.close()
 
-# Twitter API
-twitter_auth = tweepy.OAuth1UserHandler(
-	config["twitter"]["consumer_key"],
-	config["twitter"]["consumer_secret"],
-	config["twitter"]["access_token"],
-	config["twitter"]["access_token_secret"],
-)
 
-tw_v1 = tweepy.API(twitter_auth, wait_on_rate_limit = True)
-tw_v2 = tweepy.Client(
-	consumer_key = config["twitter"]["consumer_key"],
-	consumer_secret = config["twitter"]["consumer_secret"],
-	access_token = config["twitter"]["access_token"],
-	access_token_secret = config["twitter"]["access_token_secret"],
-	bearer_token = config["twitter"]["bearer_token"],
-	wait_on_rate_limit = True,
-)
+@retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
+async def post_twitter(config, post, job_id):
+	# Twitter API clients
+	try:
+		tw_auth = tweepy.OAuth1UserHandler(
+			config["twitter"]["consumer_key"],
+			config["twitter"]["consumer_secret"],
+			config["twitter"]["access_token"],
+			config["twitter"]["access_token_secret"],
+		)
+
+		tw_v1 = tweepy.API(tw_auth, wait_on_rate_limit = True)
+		tw_v2 = tweepy.Client(
+			consumer_key = config["twitter"]["consumer_key"],
+			consumer_secret = config["twitter"]["consumer_secret"],
+			access_token = config["twitter"]["access_token"],
+			access_token_secret = config["twitter"]["access_token_secret"],
+			bearer_token = config["twitter"]["bearer_token"],
+			wait_on_rate_limit = True,
+		)
+	except:
+		log.error(f"An error occurred while initializing the Twitter API clients\n{traceback.format_exc()}")
+		return
+
+	# Assign the post data to individual variables in order to make accessing the properties easier
+	caption = post.get('caption', '')
+	alt_text = post.get('alt_text', '')
+	emoji = post.get('emoji', '')
+	catbox_url = post.get('catbox_url', '')
+
+	# Upload gif to twitter
+	mediaID = tw_v1.chunked_upload(
+		filename = f"jobs/{job_id}.gif",
+		media_category = "tweet_gif"
+	).media_id_string
+
+	if alt_text != "":
+		tw_v1.create_media_metadata(
+			media_id = mediaID,
+			alt_text = alt_text
+		)
+
+	# Post tweet and reply to it with url & emoji
+	tweet = tw_v2.create_tweet(
+		text = caption,
+		media_ids = [mediaID]
+	)
+
+	tw_v2.create_tweet(
+		text = f"{catbox_url} - {emoji}",
+		in_reply_to_tweet_id = tweet[0]["id"]
+	)
+
+	# Remove post from queue now that its been posted
+	config['queue'].remove(post)
+	write_config(config)
+
+	return f"https://twitter.com/i/status/{tweet[0]['id']}"
+
+
+@retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
+async def post_mastodon(config, post, job_id):
+	# Mastodon API client
+	mstdn: Mastodon = ""
+
+	try:
+		mstdn = Mastodon(
+			client_id = config["mastodon"]["client_id"],
+			client_secret = config["mastodon"]["client_secret"],
+			access_token = config["mastodon"]["access_token"],
+			api_base_url = config["mastodon"]["api_url"]
+		)
+	except:
+		log.error(f"An error occurred while initializing the Mastodon API client\n{traceback.format_exc()}")
+		return
+
+	# Assign the post data to individual variables in order to make accessing the properties easier
+	caption = post.get('caption', '')
+	alt_text = post.get('alt_text', '')
+	emoji = post.get('emoji', '')
+	catbox_url = post.get('catbox_url', '')
+
+	# Post to mastodon
+	media = mstdn.media_post(f"jobs/{job_id}.gif", mime_type = "image/gif", description=alt_text)
+	post = mstdn.status_post(
+		status = caption,
+		media_ids = [media]
+	)
+
+	mstdn.status_post(
+		status = f"{catbox_url} - {emoji}",
+		in_reply_to_id = post["id"]
+	)
+
+	return post['url']
+
+
+@retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
+async def post_tumblr(config, post, job_id):
+	# Tumblr API client
+	tmblr: pytumblr.TumblrRestClient = ""
+
+	try:
+		tmblr = pytumblr.TumblrRestClient(
+			config["tumblr"]["consumer_key"],
+			config["tumblr"]["consumer_secret"],
+			config["tumblr"]["oauth_token"],
+			config["tumblr"]["oauth_secret"]
+		)
+	except:
+		log.error(f"An error occurred while initializing the Tumblr API client\n{traceback.format_exc()}")
+		return
+
+	# Assign the post data to individual variables in order to make accessing the properties easier
+	caption = post.get('caption', '')
+	alt_text = post.get('alt_text', '')
+	emoji = post.get('emoji', '')
+	catbox_url = post.get('catbox_url', '')
+
+	newCaption = ''
+	if caption != '':
+		newCaption = f"{caption} <br><br>"
+
+	newCaption += f'<strong>Alt text:</strong> {alt_text} <br><br><strong>Gif URL:</strong> {catbox_url} <br><br><strong>Posted by:</strong> {emoji}'
+
+	# Post to tumblr
+	res = tmblr.create_photo(
+		caption = newCaption,
+		tags = [f'posted-by-{emoji}'] + CAT_HASHTAGS,
+		data = f"jobs/{job_id}.gif",
+		state = 'published',
+		blogname = config["tumblr"]["blog_name"],
+		slug = job_id
+	)
+
+	return f'https://{config["tumblr"]["blog_name"]}.tumblr.com/post/{res["id"]}'
+
 
 
 bot = Bot()

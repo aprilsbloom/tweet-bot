@@ -16,7 +16,7 @@ def remove_post(post):
 	"""
 
 	config = load_config()
-	config["twitter"]["queue"].remove(post)
+	config['queue'].remove(post)
 	write_config(config)
 
 def edit_post(post, args):
@@ -34,21 +34,21 @@ def edit_post(post, args):
 	config = load_config()
 	have_found_post = False
 	found_post = None
-	for tmpPost in config["twitter"]["queue"]:
+	for tmpPost in config['queue']:
 		if tmpPost["catbox_url"] == post['catbox_url']:
 			have_found_post = True
 			found_post = tmpPost
 			break
 
 	if have_found_post:
-		post_index = config["twitter"]["queue"].index(found_post)
+		post_index = config['queue'].index(found_post)
 
 		if args.get('caption', '') == '':
-			del config['twitter']['queue'][post_index]['caption']
+			del config['queue'][post_index]['caption']
 		else:
-			config["twitter"]["queue"][post_index]["caption"] = args.get('caption', '')
+			config['queue'][post_index]["caption"] = args.get('caption', '')
 
-		config["twitter"]["queue"][post_index]["alt_text"] = args.get('alt_text', '')
+		config['queue'][post_index]["alt_text"] = args.get('alt_text', '')
 		write_config(config)
 
 def create_embed(title: str, description: str, color: str):
@@ -81,7 +81,10 @@ def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 	"""
 
 	config = load_config()
-	return user_id in config["discord"]["authed_users"] or user_id == bot_info.owner.id
+
+
+	print(int(user_id), int(user_id) in config["discord"]["authed_users"], user_id == bot_info.owner.id)
+	return int(user_id) in config["discord"]["authed_users"] or user_id == bot_info.owner.id
 
 async def error_response(interaction: discord.Interaction, error, command_name):
 	"""
