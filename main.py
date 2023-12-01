@@ -8,14 +8,14 @@ import string
 import tweepy
 import pytumblr
 import aiohttp
-from datetime import datetime
+from datetime import datetime, timedelta
 from mastodon import Mastodon
 from pathlib import Path
 from typing import Union
 from discord.ext import commands, tasks
 from httpx import AsyncClient, Response
 from tenacity import retry, stop_after_attempt, retry_if_result
-from utils.globals import BASE_HEADERS, CAT_HASHTAGS, POST_WB_INFO, MISC_WB_INFO, cfg, log
+from utils.globals import BASE_HEADERS, CAT_HASHTAGS, POST_HR_INTERVAL, POST_WB_INFO, MISC_WB_INFO, cfg, log
 
 class Bot(commands.Bot):
 	def __init__(self):
@@ -59,24 +59,24 @@ class Bot(commands.Bot):
 		await self.wait_until_ready()
 		log.success(f"Logged in as {self.user}.")
 
-		# Determine goal hour since its only 0-23, depending on the time ran it may mess it up
+		# Determine goal hour
 		current_time = datetime.now()
-		goal_hr = 0
-		if (current_time.hour + 1) > 23:
-			goal_hr = 0
-		else:
-			goal_hr = current_time.hour + 1
+		goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute)
+		delay = (goal_timestamp - current_time).total_seconds()
 
-		# work out the delay in seconds
-		start_time = current_time.replace(hour = goal_hr, minute = 0, second = 0)
-		delay = (start_time - current_time).total_seconds()
+		cfg.set('next_post_time', int(goal_timestamp.timestamp()))
+		log.info('Starting loop at ' + goal_timestamp.strftime('%H:%M:%S'))
+
 		await asyncio.sleep(delay)
 
 		post_loop.start()
 
 
-@tasks.loop(hours = 2)
+@tasks.loop(hours = POST_HR_INTERVAL)
 async def post_loop():
+	print("")
+	log.info('Running post loop...')
+
 	client = AsyncClient()
 	session = aiohttp.ClientSession()
 	queue = cfg.get('queue')
@@ -160,6 +160,7 @@ async def post_loop():
 
 	# Twitter
 	if cfg.get('twitter.enabled'):
+		log.info('Posting to Twitter...')
 		res_data["twitter"] = await post_twitter(post, job_id)
 
 	await asyncio.sleep(5)
@@ -167,6 +168,7 @@ async def post_loop():
 
 	# Tumblr
 	if cfg.get('tumblr.enabled'):
+		log.info('Posting to Tumblr...')
 		res_data["tumblr"] = await post_tumblr(post, job_id)
 
 	await asyncio.sleep(5)
@@ -229,6 +231,11 @@ async def post_loop():
 	await client.aclose()
 	await session.close()
 
+	# Set the next post time
+	current_time = datetime.now()
+	goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute, seconds = -current_time.second, milliseconds=-current_time.microsecond, microseconds = -current_time.microsecond)
+	cfg.set('next_post_time', int(goal_timestamp.timestamp()))
+
 
 @retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
 async def post_twitter(post, job_id):
@@ -285,6 +292,7 @@ async def post_twitter(post, job_id):
 		in_reply_to_tweet_id = tweet[0]["id"]
 	)
 
+	log.info(f'Successfully posted to Twitter! https://twitter.com/i/status/{tweet[0]["id"]}')
 	return f"https://twitter.com/i/status/{tweet[0]['id']}"
 
 
@@ -323,6 +331,7 @@ async def post_mastodon(post, job_id):
 		in_reply_to_id = post["id"]
 	)
 
+	log.info(f'Successfully posted to Mastodon! {post["url"]}')
 	return post['url']
 
 
@@ -366,6 +375,7 @@ async def post_tumblr(post, job_id):
 		slug = job_id
 	)
 
+	log.info(f'Successfully posted to Tumblr! https://{blog_name}.tumblr.com/post/{res["id"]}')
 	return f'https://{blog_name}.tumblr.com/post/{res["id"]}'
 
 

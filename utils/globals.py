@@ -11,6 +11,8 @@ CLEAN_URL_REGEX = r"\?.*$"
 
 
 # ---- Misc ---- #
+POST_HR_INTERVAL = 4
+
 # Twitter's file size limit is 15MB, this is in bytes
 FILESIZE_LIMIT_TWITTER = 15728640
 

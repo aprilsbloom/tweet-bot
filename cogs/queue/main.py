@@ -2,9 +2,8 @@ import discord
 from discord.ext import commands
 from cogs.queue._views import AuthedQueueViewBasic, AuthedQueueViewExtended
 from utils.general import error_response, handle_base_response, is_user_authorized
-from utils.globals import cfg
-
-
+from utils.globals import POST_HR_INTERVAL, cfg
+from datetime import datetime, timedelta
 
 class Queue(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -17,7 +16,6 @@ class Queue(commands.Cog):
 		bot_info = await self.bot.application_info()
 		queue = cfg.get('queue')
 		queue_length = len(queue)
-
 
 		# If queue is empty, return
 		if queue_length == 0:
@@ -39,6 +37,7 @@ class Queue(commands.Cog):
 			orig_url = post.get('original_url', '')
 			author = post.get('author', '')
 			emoji = post.get('emoji', '')
+			base_timestamp = datetime.fromtimestamp(int(cfg.get('next_post_time')))
 
 			# add caption field if present
 			if caption != "":
@@ -51,6 +50,7 @@ class Queue(commands.Cog):
 				inline = False,
 			)
 			embed.add_field(name = "Gif URL", value = catbox_url)
+			embed.add_field(name="ETA", value=f"<t:{int(base_timestamp.timestamp())}:R>", inline=False)
 			embed.set_image(url = orig_url)
 
 			if interaction.response.is_done():
@@ -62,6 +62,7 @@ class Queue(commands.Cog):
 		# If there are multiple posts in the queue, return an embed with multiple pages, and edit/delete buttons
 		if queue_length > 1:
 			embeds = []
+			base_timestamp = datetime.fromtimestamp(int(cfg.get('next_post_time')))
 
 			for count, post in enumerate(queue, start=1):
 				embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(cfg.get('discord.embed_colors.info')))
@@ -72,6 +73,7 @@ class Queue(commands.Cog):
 				orig_url = post.get('original_url', '')
 				author = post.get('author', '')
 				emoji = post.get('emoji', '')
+				eta = int((base_timestamp + timedelta(hours = (count - 1) * POST_HR_INTERVAL)).timestamp())
 
 				if caption:
 					embed.add_field(name = "Caption", value = caption, inline = False)
@@ -82,7 +84,8 @@ class Queue(commands.Cog):
 					value = f"**<@{author}>** - {emoji}",
 					inline = False,
 				)
-				embed.add_field(name = "Gif URL", value = catbox_url)
+				embed.add_field(name = "Gif URL", value = catbox_url, inline = False)
+				embed.add_field(name="ETA", value=f"<t:{eta}:R>", inline=False)
 				embed.set_image(url = orig_url)
 				embed.set_footer(text = f"Post {count} / {queue_length}")
 
