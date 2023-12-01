@@ -1,8 +1,7 @@
 import discord
 from discord.ext import commands
-
-from utils.config import load_config, write_config
 from utils.general import create_embed, error_response, handle_base_response, is_user_authorized
+from utils.globals import cfg
 
 
 
@@ -15,7 +14,6 @@ class Emoji(commands.Cog):
 	@group.command(name = "set", description = "Set your emoji")
 	@discord.app_commands.describe(emoji = "The emoji you want to set")
 	async def set_emoji(self, interaction: discord.Interaction, emoji: str):
-		config = load_config()
 		bot_info = await self.bot.application_info()
 
 		# Check if the user is authorized to run this command
@@ -29,12 +27,10 @@ class Emoji(commands.Cog):
 				ephemeral = True
 			)
 
-		config["discord"]["emojis"][str(interaction.user.id)] = emoji
-		write_config(config)
+		cfg.set(f'discord.emojis.{interaction.user.id}', emoji)
 
 		return await handle_base_response(
 			interaction = interaction,
-			config = config,
 			responseType = "success",
 			content = f"Your emoji has been set to {emoji}",
 		)
@@ -46,7 +42,6 @@ class Emoji(commands.Cog):
 
 	@group.command(name = "remove", description = "Remove your emoji from the list")
 	async def remove_emoji(self, interaction: discord.Interaction):
-		config = load_config()
 		bot_info = await self.bot.application_info()
 
 		# Check if the user is authorized to run this command
@@ -61,20 +56,19 @@ class Emoji(commands.Cog):
 			)
 
 		# If the user doesn't have an emoji, return an error
-		if str(interaction.user.id) not in config["discord"]["emojis"]:
+		emojis = cfg.get('discord.emojis')
+		if str(interaction.user.id) not in emojis:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "You do not have an emoji set.",
 			)
 
-		del config["discord"]["emojis"][str(interaction.user.id)]
-		write_config(config)
+		del emojis[str(interaction.user.id)]
+		cfg.set('discord.emojis', emojis)
 
 		return await handle_base_response(
 			interaction = interaction,
-			config = config,
 			responseType = "success",
 			content = "Your emoji has been removed.",
 		)
@@ -86,7 +80,6 @@ class Emoji(commands.Cog):
 
 	@group.command(name = "view", description = "View the emoji you have set")
 	async def view_emoji(self, interaction: discord.Interaction):
-		config = load_config()
 		bot_info = await self.bot.application_info()
 
 		# Check if the user is authorized to run this command
@@ -101,10 +94,10 @@ class Emoji(commands.Cog):
 			)
 
 		# If the user doesn't have an emoji, return an error
-		if str(interaction.user.id) not in config["discord"]["emojis"]:
+		emojis = cfg.get('discord.emojis')
+		if str(interaction.user.id) not in emojis:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "You do not have an emoji set.",
 			)
@@ -112,9 +105,8 @@ class Emoji(commands.Cog):
 		# Return the users emoji
 		return await handle_base_response(
 			interaction = interaction,
-			config = config,
 			responseType = "info",
-			content = f"Your emoji is: {config['discord']['emojis'][str(interaction.user.id)]}",
+			content = f"Your emoji is: {emojis[str(interaction.user.id)]}",
 		)
 
 	@view_emoji.error
@@ -124,7 +116,6 @@ class Emoji(commands.Cog):
 
 	@group.command(name = "list", description = "List all emojis that have been set by other users")
 	async def list_emoji(self, interaction: discord.Interaction):
-		config = load_config()
 		bot_info = await self.bot.application_info()
 
 		# Check if the user is authorized to run this command
@@ -139,10 +130,10 @@ class Emoji(commands.Cog):
 			)
 
 		# If there are no emojis, return an error
-		if len(config["discord"]["emojis"]) == 0:
+		emojis = cfg.get('discord.emojis')
+		if len(emojis) == 0:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "No users have set an emoji yet.",
 			)
@@ -150,7 +141,7 @@ class Emoji(commands.Cog):
 		return await interaction.response.send_message(
 			embed = create_embed(
 				"Emoji list",
-				"\n".join([f"<@{user}> - {emoji}" for user, emoji in config["discord"]["emojis"].items()]),
+				"\n".join([f"<@{user}> - {emoji}" for user, emoji in emojis.items()]),
 				"info"
 			)
 		)

@@ -1,4 +1,6 @@
 from typing import Final
+from utils.config import Config
+from utils.logger import Logger
 
 # ---- Regexes ---- #
 # Regex to find the raw gif URL from a Tenor URL (they provide a link to a page with the gif embedded within the HTML)
@@ -18,52 +20,11 @@ CATBOX_URL = "https://catbox.moe/user/api.php"
 # Cat related hashtags
 CAT_HASHTAGS = ['gifkitties', 'cat', 'catlife', 'catlove', 'catlover', 'catlovers', 'catoftheday', 'cats', 'cats_of_instagram', 'catsoftheworld']
 
-# Default configuration file
-DEFAULT_CFG: Final = {
-	"userhash": "enter a randomly generated string here",
-	"queue": [],
-	"discord": {
-		"token": "",
-		"post_notifs": {
-			"enabled": True,
-			"webhook": "",
-			"role_to_ping": ""
-		},
-		"misc_notifs": {
-			"enabled": True,
-			"webhook": ""
-		},
-		"authed_users": [],
-		"emojis": {},
-		"embed_colors": {
-			"success": "#2ECC71",
-			"error": "#ff0000",
-			"info": "#3498DB"
-		}
-	},
-	"twitter": {
-		"enabled": True,
-		"consumer_key": "",
-		"consumer_secret": "",
-		"access_token": "",
-		"access_token_secret": ""
-	},
-	"tumblr": {
-		"enabled": True,
-		"consumer_key": "",
-		"consumer_secret": "",
-		"oauth_token": "",
-		"oauth_secret": ""
-	},
-	"mastodon": {
-		"enabled": True,
-		"api_url": "",
-		"client_id": "",
-		"client_secret": "",
-		"access_token": ""
-	}
-}
+# Config class instance
+cfg = Config(path = "config.json")
 
+# Logger
+log = Logger()
 
 # ---- Webhook information ---- #
 # Information for the post notification webhook

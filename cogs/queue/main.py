@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from cogs.queue._views import AuthedQueueViewBasic, AuthedQueueViewExtended
 from utils.general import error_response, handle_base_response, is_user_authorized
-from utils.config import load_config, write_config
+from utils.globals import cfg
 
 
 
@@ -14,38 +14,43 @@ class Queue(commands.Cog):
 
 	@group.command(name = 'view', description = 'View the post queue.')
 	async def queue_view(self, interaction: discord.Interaction):
-		config = load_config()
+
 		bot_info = await self.bot.application_info()
-		queue_length = len(config['queue'])
+		queue = cfg.get('queue')
+		queue_length = len(queue)
 
 		# If queue is empty, return
 		if queue_length == 0:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = 'info',
 				content = 'The queue is empty.'
 			)
 
 		# If there is only one post in the queue, return an embed with only delete/edit buttons
 		if queue_length == 1:
-			embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(config["discord"]["embed_colors"]["info"]))
-			post = config['queue'][0]
-			author_user = post["author"]
-			author_emoji = post["emoji"]
+			embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(cfg.get('discord.embed_colors.info')))
+
+			post = queue[0]
+			caption = post.get('caption', '')
+			alt_text = post.get('alt_text', '')
+			catbox_url = post.get('catbox_url', '')
+			orig_url = post.get('original_url', '')
+			author = post.get('author', '')
+			emoji = post.get('emoji', '')
 
 			# add caption field if present
-			if post["caption"] != "":
-				embed.add_field(name = "Caption", value = post["caption"], inline = False)
+			if caption != "":
+				embed.add_field(name = "Caption", value = caption, inline = False)
 
-			embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
+			embed.add_field(name = "Alt text", value = alt_text, inline = False)
 			embed.add_field(
 				name = "Author",
-				value = f"**<@{author_user}>** - {author_emoji}",
+				value = f"**<@{author}>** - {emoji}",
 				inline = False,
 			)
-			embed.add_field(name = "Gif URL", value = post["catbox_url"])
-			embed.set_image(url = post["catbox_url"])
+			embed.add_field(name = "Gif URL", value = catbox_url)
+			embed.set_image(url = orig_url)
 
 			if interaction.response.is_done():
 				return await interaction.edit_original_response(embed = embed, view=AuthedQueueViewBasic(post, bot_info))
@@ -56,22 +61,28 @@ class Queue(commands.Cog):
 		if queue_length > 1:
 			embeds = []
 
-			for count, post in enumerate(config['queue'], start=1):
-				embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(config["discord"]["embed_colors"]["info"]))
-				author_user = post["author"]
-				author_emoji = post["emoji"]
+			for count, post in enumerate(queue, start=1):
+				embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(cfg.get('discord.embed_colors.info')))
 
-				if post.get("caption", ""):
-					embed.add_field(name = "Caption", value = post["caption"], inline = False)
+				post = queue[0]
+				caption = post.get('caption', '')
+				alt_text = post.get('alt_text', '')
+				catbox_url = post.get('catbox_url', '')
+				orig_url = post.get('original_url', '')
+				author = post.get('author', '')
+				emoji = post.get('emoji', '')
 
-				embed.add_field(name = "Alt text", value = post["alt_text"], inline = False)
+				if caption:
+					embed.add_field(name = "Caption", value = caption, inline = False)
+
+				embed.add_field(name = "Alt text", value = alt_text, inline = False)
 				embed.add_field(
 					name = "Author",
-					value = f"**<@{author_user}>** - {author_emoji}",
+					value = f"**<@{author}>** - {emoji}",
 					inline = False,
 				)
-				embed.add_field(name = "Gif URL", value = post["catbox_url"])
-				embed.set_image(url = post["catbox_url"])
+				embed.add_field(name = "Gif URL", value = catbox_url)
+				embed.set_image(url = orig_url)
 				embed.set_footer(text = f"Post {count} / {queue_length}")
 
 				embeds.append({
@@ -91,15 +102,14 @@ class Queue(commands.Cog):
 
 	@group.command(name = 'remove', description = "Remove an item from the queue")
 	async def queue_remove(self, interaction: discord.Interaction, url: str):
-		config = load_config()
-		queue_length = len(config['queue'])
+		queue = cfg.get('queue')
+		queue_length = len(queue)
 		bot_info = await self.bot.application_info()
 
 		# If user isn't authed, return
 		if not is_user_authorized(interaction.user.id, bot_info):
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				content = "You do not have permission to run this command.\nPlease ask an administrator for access if you believe this to be in error.",
 				responseType = "error",
 			)
@@ -108,24 +118,23 @@ class Queue(commands.Cog):
 		if queue_length == 0:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				content = "The tweet queue is empty. Please try again later",
 				responseType = "error",
 			)
 
 		# Find the post in the queue given the URL
 		foundGif = False
-		for post in config.copy()["twitter"]["queue"]:
-			if post["catbox_url"] == url:
-				config['queue'].remove(post)
-				write_config(config)
+		for post in queue.copy():
+			if post["catbox_url"] == url or post["original_url"] == url:
+				queue.remove(post)
 				foundGif = True
+
+		cfg.set('queue', queue)
 
 		# If the post was found, return success
 		if foundGif:
 			return await handle_base_response(
 				interaction=interaction,
-				config=config,
 				content="The URL you have entered has been successfully removed from the queue",
 				responseType="success",
 			)
@@ -133,7 +142,6 @@ class Queue(commands.Cog):
 		else:
 			await handle_base_response(
 				interaction=interaction,
-				config=config,
 				content="The URL you have entered was not found in the queue.",
 				responseType="error",
 			)

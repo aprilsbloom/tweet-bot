@@ -1,6 +1,5 @@
 import discord
 from utils.general import is_user_authorized, create_embed
-from utils.config import load_config, write_config
 
 async def delete_response(interaction: discord.Interaction, bot_info: discord.AppInfo, post: dict, view: discord.ui.View):
 	"""

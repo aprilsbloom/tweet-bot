@@ -5,23 +5,17 @@ import os
 import traceback
 import random
 import string
-import requests
 import tweepy
 import pytumblr
 import aiohttp
+from datetime import datetime
 from mastodon import Mastodon
 from pathlib import Path
 from typing import Union
 from discord.ext import commands, tasks
 from httpx import AsyncClient, Response
 from tenacity import retry, stop_after_attempt, retry_if_result
-from utils.config import load_config, write_config
-from utils.general import create_embed
-from utils.logger import Logger
-from utils.constants import BASE_HEADERS, CAT_HASHTAGS, POST_WB_INFO, MISC_WB_INFO
-
-log = Logger()
-config = load_config()
+from utils.globals import BASE_HEADERS, CAT_HASHTAGS, POST_WB_INFO, MISC_WB_INFO, cfg, log
 
 class Bot(commands.Bot):
 	def __init__(self):
@@ -57,6 +51,7 @@ class Bot(commands.Bot):
 						pass
 					except:
 						log.error(f'Unable to load {cog_path}\n{traceback.format_exc()}')
+
 			for dir in dirs:
 				await self.setupCommands(os.path.join(root, dir))
 
@@ -64,17 +59,29 @@ class Bot(commands.Bot):
 		await self.wait_until_ready()
 		log.success(f"Logged in as {self.user}.")
 
-		await asyncio.sleep(30)
-		post_loop.start()
+		# Determine goal hour since its only 0-23, depending on the time ran it may mess it up
+		# current_time = datetime.now()
+		# goal_hr = 0
+		# if (current_time.hour + 1) > 23:
+		# 	goal_hr = 0
+		# else:
+		# 	goal_hr = current_time.hour + 1
+
+		# # work out the delay in seconds
+		# start_time = current_time.replace(hour = goal_hr, minute = 0, second = 0)
+		# delay = (start_time - current_time).total_seconds()
+		# await asyncio.sleep(delay)
+
+		# post_loop.start()
 
 
 @tasks.loop(hours = 2)
 async def post_loop():
-	config = load_config()
 	client = AsyncClient()
 	session = aiohttp.ClientSession()
+	queue = cfg.get('queue')
 
-	post = config['queue'][0]
+	post = queue[0]
 	caption = post.get('caption', '')
 	alt_text = post.get('alt_text', '')
 	author = post.get('author', '')
@@ -82,7 +89,7 @@ async def post_loop():
 	catbox_url = post.get('catbox_url', '')
 	orig_url = post.get('original_url', '')
 
-	if len(config['queue']) == 0:
+	if len(queue) == 0:
 		return log.info("No posts in queue. Skipping...")
 
 	# Initialize job directory and assign random ID
@@ -97,8 +104,11 @@ async def post_loop():
 	misc_wb: discord.Webhook = ""
 
 	try:
-		post_wb = discord.Webhook.from_url(config['discord']['post_notifs']['webhook'], session = session)
-		misc_wb = discord.Webhook.from_url(config['discord']['misc_notifs']['webhook'], session = session)
+		if cfg.get('discord.post_notifs.enabled'):
+			post_wb = discord.Webhook.from_url(cfg.get('discord.post_notifs.webhook'), session = session)
+
+		if cfg.get('discord.misc_notifs.enabled'):
+			misc_wb = discord.Webhook.from_url(cfg.get('discord.misc_notifs.webhook'), session = session)
 	except:
 		log.error(f"An error occurred while initializing the webhook client\n{traceback.format_exc()}")
 		return
@@ -111,7 +121,7 @@ async def post_loop():
 		res = await client.get(catbox_url, headers = BASE_HEADERS, timeout = 30)
 	except:
 		log.error(f"An error occurred while downloading the gif\n{traceback.format_exc()}")
-		embed = discord.Embed(title = "Error", description = "An error occurred while downloading the gif.", color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
+		embed = discord.Embed(title = "Error", description = "An error occurred while downloading the gif.", color = discord.Color.from_str(cfg.get('discord.embed_colors.error')))
 		embed.add_field(name = "Error", value = f"```{traceback.format_exc()}```", inline = False)
 		return await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
@@ -121,13 +131,13 @@ async def post_loop():
 		err_dsc = f"The server returned a non-ok status code ({res.status_code})."
 
 		log.error(f"{err_hdr}\n{err_dsc}")
-		embed = discord.Embed(title = "Error", description = err_hdr, color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
+		embed = discord.Embed(title = "Error", description = err_hdr, color = discord.Color.from_str(cfg.get('discord.embed_colors.error')))
 		embed.add_field(name = "Error", value = f"```{err_dsc}```", inline = False)
 		await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
 		# We also want to remove the tweet from the queue, so that the bot doesn't attempt to post it again
-		config['queue'].pop(0)
-		write_config(config)
+		queue.pop(0)
+		cfg.set('queue', queue)
 		return
 
 	# Write the gif to the jobs directory
@@ -139,14 +149,14 @@ async def post_loop():
 	res_data = {}
 
 	# Twitter
-	if config["twitter"]["enabled"]:
-		res_data["twitter"] = await post_twitter(config, post, job_id)
+	if cfg.get('twitter.enabled'):
+		res_data["twitter"] = await post_twitter(post, job_id)
 
 	await asyncio.sleep(5)
 
 	# Tumblr
-	if config["tumblr"]["enabled"]:
-		res_data["tumblr"] = await post_tumblr(config, post, job_id)
+	if cfg.get('tumblr.enabled'):
+		res_data["tumblr"] = await post_tumblr(post, job_id)
 
 	await asyncio.sleep(5)
 
@@ -162,13 +172,13 @@ async def post_loop():
 	if len(platforms) == 0:
 		log.error(f"An error occurred while posting the gif\nAll platforms failed to post.")
 
-		if config["discord"]["misc_notifs"]["enabled"]:
-			embed = discord.Embed(title = "Error", description = "An error occurred while posting the gif.\nAll platforms failed to post.", color = discord.Color.from_str(config["discord"]['embed_colors']['error']))
+		if cfg.get('discord.misc_notifs.enabled'):
+			embed = discord.Embed(title = "Error", description = "An error occurred while posting the gif.\nAll platforms failed to post.", color = discord.Color.from_str(cfg.get('discord.embed_colors.error')))
 			await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
 		return
 
-	embed = discord.Embed(title = "New post", color = discord.Color.from_str(config["discord"]['embed_colors']['success']))
+	embed = discord.Embed(title = "New post", color = discord.Color.from_str(cfg.get('discord.embed_colors.success')))
 	embed.set_image(url = orig_url)
 
 	if caption != '':
@@ -182,21 +192,21 @@ async def post_loop():
 	embed.add_field(name = "Post links", value = linksStr, inline = False)
 
 	# Send the embed to the post notification webhook
-	if config["discord"]["post_notifs"]["enabled"]:
-		role_to_ping = config["discord"]["post_notifs"]["role_to_ping"]
+	if cfg.get('discord.post_notifs.enabled'):
+		role_to_ping = cfg.get('discord.post_notifs.role_to_ping')
 		await post_wb.send(content = f"<@&{role_to_ping}>", embed = embed, username = POST_WB_INFO['username'], avatar_url = POST_WB_INFO['pfp'])
 
 	await asyncio.sleep(3)
 
 	# Send the embed to the misc notification webhook to alert the author that the post was successful
-	if config["discord"]["misc_notifs"]["enabled"]:
+	if cfg.get('discord.misc_notifs.enabled'):
 		await misc_wb.send(content = f"<@!{author}>", embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
 
 	# Remove post from queue now that its been posted
-	if len(config['queue']) > 0:
-		config['queue'].pop(0)
+	if len(queue) > 0:
+		queue.pop(0)
 
-	write_config(config)
+	cfg.set('queue', queue)
 
 	# Close the sessions since we're done with them
 	await client.aclose()
@@ -204,23 +214,23 @@ async def post_loop():
 
 
 @retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
-async def post_twitter(config, post, job_id):
+async def post_twitter(post, job_id):
 	# Twitter API clients
 	try:
 		tw_auth = tweepy.OAuth1UserHandler(
-			config["twitter"]["consumer_key"],
-			config["twitter"]["consumer_secret"],
-			config["twitter"]["access_token"],
-			config["twitter"]["access_token_secret"],
+			cfg.get('twitter.consumer_key'),
+			cfg.get('twitter.consumer_secret'),
+			cfg.get('twitter.access_token'),
+			cfg.get('twitter.access_token_secret'),
 		)
 
 		tw_v1 = tweepy.API(tw_auth, wait_on_rate_limit = True)
 		tw_v2 = tweepy.Client(
-			consumer_key = config["twitter"]["consumer_key"],
-			consumer_secret = config["twitter"]["consumer_secret"],
-			access_token = config["twitter"]["access_token"],
-			access_token_secret = config["twitter"]["access_token_secret"],
-			bearer_token = config["twitter"]["bearer_token"],
+			consumer_key = cfg.get('twitter.consumer_key'),
+			consumer_secret = cfg.get('twitter.consumer_secret'),
+			access_token = cfg.get('twitter.access_token'),
+			access_token_secret = cfg.get('twitter.access_token_secret'),
+			bearer_token = cfg.get('twitter.bearer_token'),
 			wait_on_rate_limit = True,
 		)
 	except:
@@ -256,24 +266,20 @@ async def post_twitter(config, post, job_id):
 		in_reply_to_tweet_id = tweet[0]["id"]
 	)
 
-	# Remove post from queue now that its been posted
-	config['queue'].remove(post)
-	write_config(config)
-
 	return f"https://twitter.com/i/status/{tweet[0]['id']}"
 
 
 @retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
-async def post_mastodon(config, post, job_id):
+async def post_mastodon(post, job_id):
 	# Mastodon API client
 	mstdn: Mastodon = ""
 
 	try:
 		mstdn = Mastodon(
-			client_id = config["mastodon"]["client_id"],
-			client_secret = config["mastodon"]["client_secret"],
-			access_token = config["mastodon"]["access_token"],
-			api_base_url = config["mastodon"]["api_url"]
+			client_id = cfg.get('mastodon.client_id'),
+			client_secret = cfg.get('mastodon.client_secret'),
+			access_token = cfg.get('mastodon.access_token'),
+			api_base_url = cfg.get('mastodon.api_url')
 		)
 	except:
 		log.error(f"An error occurred while initializing the Mastodon API client\n{traceback.format_exc()}")
@@ -301,16 +307,16 @@ async def post_mastodon(config, post, job_id):
 
 
 @retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
-async def post_tumblr(config, post, job_id):
+async def post_tumblr(post, job_id):
 	# Tumblr API client
 	tmblr: pytumblr.TumblrRestClient = ""
 
 	try:
 		tmblr = pytumblr.TumblrRestClient(
-			config["tumblr"]["consumer_key"],
-			config["tumblr"]["consumer_secret"],
-			config["tumblr"]["oauth_token"],
-			config["tumblr"]["oauth_secret"]
+			cfg.get('tumblr.consumer_key'),
+			cfg.get('tumblr.consumer_secret'),
+			cfg.get('tumblr.oauth_token'),
+			cfg.get('tumblr.oauth_secret')
 		)
 	except:
 		log.error(f"An error occurred while initializing the Tumblr API client\n{traceback.format_exc()}")
@@ -329,18 +335,17 @@ async def post_tumblr(config, post, job_id):
 	newCaption += f'<strong>Alt text:</strong> {alt_text} <br><br><strong>Gif URL:</strong> {catbox_url} <br><br><strong>Posted by:</strong> {emoji}'
 
 	# Post to tumblr
+	blog_name = cfg.get('tumblr.blog_name')
 	res = tmblr.create_photo(
 		caption = newCaption,
 		tags = [f'posted-by-{emoji}'] + CAT_HASHTAGS,
 		data = f"jobs/{job_id}.gif",
 		state = 'published',
-		blogname = config["tumblr"]["blog_name"],
+		blogname = blog_name,
 		slug = job_id
 	)
 
-	return f'https://{config["tumblr"]["blog_name"]}.tumblr.com/post/{res["id"]}'
-
-
+	return f'https://{blog_name}.tumblr.com/post/{res["id"]}'
 
 bot = Bot()
-bot.run(config['discord']['token'])
+bot.run(cfg.get('discord.token'))

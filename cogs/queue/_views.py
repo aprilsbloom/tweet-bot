@@ -1,7 +1,6 @@
 import discord
 from cogs.queue._utils import delete_response, edit_response
 from utils.general import is_user_authorized, create_embed, remove_post, edit_post
-from utils.config import load_config
 
 class EditPostModal(discord.ui.Modal):
 	"""
@@ -15,7 +14,6 @@ class EditPostModal(discord.ui.Modal):
 
 	def __init__(self, post, title="Edit post"):
 		super().__init__(title=title)
-		self.config = load_config()
 		self.post = post
 		self.add_inputs()
 

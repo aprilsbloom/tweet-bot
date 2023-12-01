@@ -1,10 +1,7 @@
 import traceback
 import discord
 from typing import Optional, Union
-from utils.config import load_config, write_config
-from utils.logger import Logger
-
-log = Logger()
+from utils.globals import cfg, log
 
 def remove_post(post):
 	"""
@@ -15,9 +12,9 @@ def remove_post(post):
 		- post (dict): The post to remove
 	"""
 
-	config = load_config()
-	config['queue'].remove(post)
-	write_config(config)
+	queue = cfg.get('queue')
+	queue.remove(post)
+	cfg.set('queue', queue)
 
 def edit_post(post, args):
 	"""
@@ -31,25 +28,25 @@ def edit_post(post, args):
 			- alt_text (str): The alt text to set on the post
 	"""
 
-	config = load_config()
+	queue = cfg.get('queue')
 	have_found_post = False
 	found_post = None
-	for tmpPost in config['queue']:
+	for tmpPost in queue:
 		if tmpPost["catbox_url"] == post['catbox_url']:
 			have_found_post = True
 			found_post = tmpPost
 			break
 
 	if have_found_post:
-		post_index = config['queue'].index(found_post)
+		post_index = queue.index(found_post)
 
 		if args.get('caption', '') == '':
-			del config['queue'][post_index]['caption']
+			del queue[post_index]['caption']
 		else:
-			config['queue'][post_index]["caption"] = args.get('caption', '')
+			queue[post_index]["caption"] = args.get('caption', '')
 
-		config['queue'][post_index]["alt_text"] = args.get('alt_text', '')
-		write_config(config)
+		queue[post_index]["alt_text"] = args.get('alt_text', '')
+		cfg.set('queue', queue)
 
 def create_embed(title: str, description: str, color: str):
 	"""
@@ -63,11 +60,10 @@ def create_embed(title: str, description: str, color: str):
 			- Either `success`, `info`, or `error`
 	"""
 
-	config = load_config()
 	return discord.Embed(
 		title=title,
 		description=description,
-		color=discord.Color.from_str(config["discord"]["embed_colors"][color])
+		color=discord.Color.from_str(cfg.get(f'discord.embed_colors.{color}'))
 	)
 
 def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
@@ -80,11 +76,7 @@ def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 		- bot_info (discord.AppInfo): The bot's application info
 	"""
 
-	config = load_config()
-
-
-	print(int(user_id), int(user_id) in config["discord"]["authed_users"], user_id == bot_info.owner.id)
-	return int(user_id) in config["discord"]["authed_users"] or user_id == bot_info.owner.id
+	return int(user_id) in cfg.get('discord.authed_users') or user_id == bot_info.owner.id
 
 async def error_response(interaction: discord.Interaction, error, command_name):
 	"""
@@ -93,11 +85,9 @@ async def error_response(interaction: discord.Interaction, error, command_name):
 
 	"""
 
-	config = load_config()
 	log.error(f"An error has occurred while running {command_name}\n{error}")
 	return await handle_base_response(
 		interaction = interaction,
-		config = config,
 		responseType = 'error',
 		content = f'An unknown error has occurred:\n```{error}\n```',
 	)
@@ -106,7 +96,6 @@ async def error_response(interaction: discord.Interaction, error, command_name):
 # no need for this tbh it's just bloat and really terribly wrote lmao
 async def handle_base_response(
 	interaction: discord.Interaction,
-	config: dict,
 	responseType: str,
 	content: str,
 	image_url: Optional[str] = None,
@@ -118,7 +107,6 @@ async def handle_base_response(
 	Args
 	----
 		- interaction (discord.Interaction): The interaction to respond to
-		- config (dict): The config file
 		- responseType (str): The type of response to send
 		- content (str): The content of the response, which will be set as the embed description
 		- image_url (Optional[str]): The image URL to set on the embed
@@ -131,17 +119,17 @@ async def handle_base_response(
 		case "success":
 			embed.title = "Success"
 			embed.color = discord.Color.from_str(
-				config["discord"]["embed_colors"]["success"]
+				cfg.get('discord.embed_colors.success')
 			)
 		case "info":
 			embed.title = "Info"
 			embed.color = discord.Color.from_str(
-				config["discord"]["embed_colors"]["info"]
+				cfg.get('discord.embed_colors.info')
 			)
 		case "error":
 			embed.title = "Error"
 			embed.color = discord.Color.from_str(
-				config["discord"]["embed_colors"]["error"]
+				cfg.get('discord.embed_colors.error')
 			)
 
 	# set img url if present

@@ -5,10 +5,7 @@ from typing import Optional, Union
 from httpx import AsyncClient
 from cogs.queue._views import AuthedQueueViewBasic
 from utils.general import is_user_authorized, create_embed, handle_base_response, error_response
-from utils.config import load_config, write_config
-from utils.constants import BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, FILESIZE_LIMIT_TWITTER, TENOR_REGEX
-
-
+from utils.globals import cfg, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, FILESIZE_LIMIT_TWITTER, TENOR_REGEX
 
 class Tweet(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -28,8 +25,11 @@ class Tweet(commands.Cog):
 		caption: Optional[str] = "",
 	):
 		client = AsyncClient()
-		config = load_config()
 		bot_info = await self.bot.application_info()
+
+		emojis = cfg.get('discord.emojis')
+		queue = cfg.get('queue')
+		userhash = cfg.get('userhash')
 
 		# Check if the user is authorized to run this command
 		if not is_user_authorized(interaction.user.id, bot_info):
@@ -43,7 +43,7 @@ class Tweet(commands.Cog):
 			)
 
 		# Check to see if the user has an emoji set (required to post)
-		if str(interaction.user.id) not in config["discord"]["emojis"]:
+		if str(interaction.user.id) not in emojis:
 			return await interaction.response.send_message(
 				embed = create_embed(
 					"Error",
@@ -55,7 +55,7 @@ class Tweet(commands.Cog):
 
 		# Decode the users emoji into an acceptable format
 		emoji = (
-			config["discord"]["emojis"][str(interaction.user.id)]
+			emojis[str(interaction.user.id)]
 			.encode("utf-16", "surrogatepass")
 			.decode("utf-16")
 		)
@@ -63,7 +63,6 @@ class Tweet(commands.Cog):
 		# Return a response in <= 3 seconds to prevent the command from erroring
 		await handle_base_response(
 			interaction = interaction,
-			config = config,
 			responseType = "info",
 			content = "Determining if the gif is valid...",
 		)
@@ -73,17 +72,15 @@ class Tweet(commands.Cog):
 		if not url:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "Either a GIF was unable to be found from the link provided, or you have provided a link that is currently not supported.\nPlease note that at the moment we only support Tenor, Giphy, and any other URL that ends in .gif.",
 			)
 
 		# Check to see if the gif is already in the queue
-		for post in config['queue']:
+		for post in queue:
 			if post["original_url"] == url:
 				return await handle_base_response(
 					interaction = interaction,
-					config = config,
 					responseType = "error",
 					content = "The URL you entered is already in the queue.",
 				)
@@ -93,7 +90,6 @@ class Tweet(commands.Cog):
 		if not is_small_enough:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "The gif you uploaded is too large. Please compress your file to below 15MB in size, and try again.",
 			)
@@ -101,10 +97,9 @@ class Tweet(commands.Cog):
 		# If userhash field is not in config, return error
 		# This is more just a courtesy thing to the owner of the service :P
 		# Don't want to accidentally spam them with requests and them have no idea who it is
-		if not config["userhash"]:
+		if not userhash:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "The bot owner has not set the `user_hash` property for uploads to [catbox](https://catbox.moe).",
 			)
@@ -115,7 +110,7 @@ class Tweet(commands.Cog):
 			headers = BASE_HEADERS,
 			data = {
 				"reqtype": "urlupload",
-				"userhash": config["userhash"],
+				"userhash": userhash,
 				"url": url,
 			}
 		)
@@ -124,7 +119,6 @@ class Tweet(commands.Cog):
 		if res.status_code != 200 or "Something went wrong" in res.text:
 			return await handle_base_response(
 				interaction = interaction,
-				config = config,
 				responseType = "error",
 				content = "An error occurred while uploading your gif to catbox.moe. Please try again later.",
 			)
@@ -138,8 +132,8 @@ class Tweet(commands.Cog):
 			"caption": caption,
 			"alt_text": alt_text,
 		}
-		config['queue'].append(post)
-		write_config(config)
+		queue.append(post)
+		cfg.set('queue', queue)
 
 		# Return a success message
 		embed = create_embed(
