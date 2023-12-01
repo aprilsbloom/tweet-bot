@@ -14,10 +14,10 @@ class Queue(commands.Cog):
 
 	@group.command(name = 'view', description = 'View the post queue.')
 	async def queue_view(self, interaction: discord.Interaction):
-
 		bot_info = await self.bot.application_info()
 		queue = cfg.get('queue')
 		queue_length = len(queue)
+
 
 		# If queue is empty, return
 		if queue_length == 0:
@@ -26,6 +26,7 @@ class Queue(commands.Cog):
 				responseType = 'info',
 				content = 'The queue is empty.'
 			)
+
 
 		# If there is only one post in the queue, return an embed with only delete/edit buttons
 		if queue_length == 1:
@@ -57,6 +58,7 @@ class Queue(commands.Cog):
 			else:
 				return await interaction.response.send_message(embed = embed, view=AuthedQueueViewBasic(post, bot_info))
 
+
 		# If there are multiple posts in the queue, return an embed with multiple pages, and edit/delete buttons
 		if queue_length > 1:
 			embeds = []
@@ -64,7 +66,6 @@ class Queue(commands.Cog):
 			for count, post in enumerate(queue, start=1):
 				embed = discord.Embed(title = "Queue list", color=discord.Color.from_str(cfg.get('discord.embed_colors.info')))
 
-				post = queue[0]
 				caption = post.get('caption', '')
 				alt_text = post.get('alt_text', '')
 				catbox_url = post.get('catbox_url', '')
@@ -106,6 +107,7 @@ class Queue(commands.Cog):
 		queue_length = len(queue)
 		bot_info = await self.bot.application_info()
 
+
 		# If user isn't authed, return
 		if not is_user_authorized(interaction.user.id, bot_info):
 			return await handle_base_response(
@@ -114,6 +116,7 @@ class Queue(commands.Cog):
 				responseType = "error",
 			)
 
+
 		# If queue is empty, return
 		if queue_length == 0:
 			return await handle_base_response(
@@ -121,6 +124,7 @@ class Queue(commands.Cog):
 				content = "The tweet queue is empty. Please try again later",
 				responseType = "error",
 			)
+
 
 		# Find the post in the queue given the URL
 		foundGif = False
@@ -131,15 +135,17 @@ class Queue(commands.Cog):
 
 		cfg.set('queue', queue)
 
-		# If the post was found, return success
+
 		if foundGif:
+			# If the post was found, return success
 			return await handle_base_response(
 				interaction=interaction,
 				content="The URL you have entered has been successfully removed from the queue",
 				responseType="success",
 			)
-		# If the post was not found, return error
+
 		else:
+			# If the post was not found, return error
 			await handle_base_response(
 				interaction=interaction,
 				content="The URL you have entered was not found in the queue.",

@@ -27,5 +27,3 @@ class Logger:
     def success(self, text):
         current_time = self.fetch_time()
         print(f"{current_time} {self.green}[+]{self.reset} {text}")
-
-log = Logger()

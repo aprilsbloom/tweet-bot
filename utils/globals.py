@@ -26,6 +26,7 @@ cfg = Config(path = "config.json")
 # Logger
 log = Logger()
 
+
 # ---- Webhook information ---- #
 # Information for the post notification webhook
 POST_WB_INFO: Final = {

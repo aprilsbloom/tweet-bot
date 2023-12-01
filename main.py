@@ -60,19 +60,19 @@ class Bot(commands.Bot):
 		log.success(f"Logged in as {self.user}.")
 
 		# Determine goal hour since its only 0-23, depending on the time ran it may mess it up
-		# current_time = datetime.now()
-		# goal_hr = 0
-		# if (current_time.hour + 1) > 23:
-		# 	goal_hr = 0
-		# else:
-		# 	goal_hr = current_time.hour + 1
+		current_time = datetime.now()
+		goal_hr = 0
+		if (current_time.hour + 1) > 23:
+			goal_hr = 0
+		else:
+			goal_hr = current_time.hour + 1
 
-		# # work out the delay in seconds
-		# start_time = current_time.replace(hour = goal_hr, minute = 0, second = 0)
-		# delay = (start_time - current_time).total_seconds()
-		# await asyncio.sleep(delay)
+		# work out the delay in seconds
+		start_time = current_time.replace(hour = goal_hr, minute = 0, second = 0)
+		delay = (start_time - current_time).total_seconds()
+		await asyncio.sleep(delay)
 
-		# post_loop.start()
+		post_loop.start()
 
 
 @tasks.loop(hours = 2)
@@ -89,8 +89,13 @@ async def post_loop():
 	catbox_url = post.get('catbox_url', '')
 	orig_url = post.get('original_url', '')
 
+	# Check to see if there are any posts in the queue
 	if len(queue) == 0:
 		return log.info("No posts in queue. Skipping...")
+
+	# Check to see if every platform is disabled (we don't want to run)
+	if not cfg.get('twitter.enabled') and not cfg.get('tumblr.enabled') and not cfg.get('mastodon.enabled'):
+		return log.info("All platforms are disabled. Skipping...")
 
 	# Initialize job directory and assign random ID
 	if os.path.exists("jobs/"):
@@ -113,6 +118,7 @@ async def post_loop():
 		log.error(f"An error occurred while initializing the webhook client\n{traceback.format_exc()}")
 		return
 
+
 	# Download and write the gif to the system before posting, in order to ensure everything is legitimate
 	# If an error occurs, i.e the web server times out, we want to catch it
 	res: Response = ""
@@ -124,6 +130,7 @@ async def post_loop():
 		embed = discord.Embed(title = "Error", description = "An error occurred while downloading the gif.", color = discord.Color.from_str(cfg.get('discord.embed_colors.error')))
 		embed.add_field(name = "Error", value = f"```{traceback.format_exc()}```", inline = False)
 		return await misc_wb.send(embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
+
 
 	# If the server returns a non-ok status code, we want to respond accordingly as well
 	if res.status_code != 200:
@@ -140,13 +147,16 @@ async def post_loop():
 		cfg.set('queue', queue)
 		return
 
+
 	# Write the gif to the jobs directory
 	with open(f"jobs/{job_id}.gif", "wb") as f:
 		f.write(res.content)
 
+
 	# Now, begin the actual posting.
 	# Assign the post data to individual variables in order to make accessing the properties easier
 	res_data = {}
+
 
 	# Twitter
 	if cfg.get('twitter.enabled'):
@@ -154,17 +164,20 @@ async def post_loop():
 
 	await asyncio.sleep(5)
 
+
 	# Tumblr
 	if cfg.get('tumblr.enabled'):
 		res_data["tumblr"] = await post_tumblr(post, job_id)
 
 	await asyncio.sleep(5)
 
+
 	# Mastodon
 	# if config["mastodon"]["enabled"]:
 	# 	res_data["mastodon"] = await post_mastodon(config, post, job_id)
 
 	# await asyncio.sleep(5)
+
 
 	# Check to see the results of each function call, if any of them are false or None we don't want to count them
 	# If the platforms array is empty, we want to return an error
@@ -191,6 +204,7 @@ async def post_loop():
 	linksStr = '\n'.join([f'- [{platform_name}]({res_data[platform_name.lower()]})' for platform_name in platforms])
 	embed.add_field(name = "Post links", value = linksStr, inline = False)
 
+
 	# Send the embed to the post notification webhook
 	if cfg.get('discord.post_notifs.enabled'):
 		role_to_ping = cfg.get('discord.post_notifs.role_to_ping')
@@ -198,15 +212,18 @@ async def post_loop():
 
 	await asyncio.sleep(3)
 
+
 	# Send the embed to the misc notification webhook to alert the author that the post was successful
 	if cfg.get('discord.misc_notifs.enabled'):
 		await misc_wb.send(content = f"<@!{author}>", embed = embed, username = MISC_WB_INFO['username'], avatar_url = MISC_WB_INFO['pfp'])
+
 
 	# Remove post from queue now that its been posted
 	if len(queue) > 0:
 		queue.pop(0)
 
 	cfg.set('queue', queue)
+
 
 	# Close the sessions since we're done with them
 	await client.aclose()
@@ -237,11 +254,13 @@ async def post_twitter(post, job_id):
 		log.error(f"An error occurred while initializing the Twitter API clients\n{traceback.format_exc()}")
 		return
 
+
 	# Assign the post data to individual variables in order to make accessing the properties easier
 	caption = post.get('caption', '')
 	alt_text = post.get('alt_text', '')
 	emoji = post.get('emoji', '')
 	catbox_url = post.get('catbox_url', '')
+
 
 	# Upload gif to twitter
 	mediaID = tw_v1.chunked_upload(
@@ -291,6 +310,7 @@ async def post_mastodon(post, job_id):
 	emoji = post.get('emoji', '')
 	catbox_url = post.get('catbox_url', '')
 
+
 	# Post to mastodon
 	media = mstdn.media_post(f"jobs/{job_id}.gif", mime_type = "image/gif", description=alt_text)
 	post = mstdn.status_post(
@@ -334,6 +354,7 @@ async def post_tumblr(post, job_id):
 
 	newCaption += f'<strong>Alt text:</strong> {alt_text} <br><br><strong>Gif URL:</strong> {catbox_url} <br><br><strong>Posted by:</strong> {emoji}'
 
+
 	# Post to tumblr
 	blog_name = cfg.get('tumblr.blog_name')
 	res = tmblr.create_photo(
@@ -346,6 +367,7 @@ async def post_tumblr(post, job_id):
 	)
 
 	return f'https://{blog_name}.tumblr.com/post/{res["id"]}'
+
 
 bot = Bot()
 bot.run(cfg.get('discord.token'))

@@ -16,6 +16,7 @@ def remove_post(post):
 	queue.remove(post)
 	cfg.set('queue', queue)
 
+
 def edit_post(post, args):
 	"""
 	Edits a post in the queue
@@ -48,6 +49,7 @@ def edit_post(post, args):
 		queue[post_index]["alt_text"] = args.get('alt_text', '')
 		cfg.set('queue', queue)
 
+
 def create_embed(title: str, description: str, color: str):
 	"""
 	Creates an incredibly basic embed for use in responses
@@ -66,6 +68,7 @@ def create_embed(title: str, description: str, color: str):
 		color=discord.Color.from_str(cfg.get(f'discord.embed_colors.{color}'))
 	)
 
+
 def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 	"""
 	Checks if a user is authorized to run commands
@@ -77,6 +80,7 @@ def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 	"""
 
 	return int(user_id) in cfg.get('discord.authed_users') or user_id == bot_info.owner.id
+
 
 async def error_response(interaction: discord.Interaction, error, command_name):
 	"""
@@ -91,6 +95,7 @@ async def error_response(interaction: discord.Interaction, error, command_name):
 		responseType = 'error',
 		content = f'An unknown error has occurred:\n```{error}\n```',
 	)
+
 
 # TODO: remove this in favor of making everything ourself
 # no need for this tbh it's just bloat and really terribly wrote lmao

@@ -27,9 +27,11 @@ class Tweet(commands.Cog):
 		client = AsyncClient()
 		bot_info = await self.bot.application_info()
 
+
 		emojis = cfg.get('discord.emojis')
 		queue = cfg.get('queue')
 		userhash = cfg.get('userhash')
+
 
 		# Check if the user is authorized to run this command
 		if not is_user_authorized(interaction.user.id, bot_info):
@@ -42,6 +44,7 @@ class Tweet(commands.Cog):
 				ephemeral = True
 			)
 
+
 		# Check to see if the user has an emoji set (required to post)
 		if str(interaction.user.id) not in emojis:
 			return await interaction.response.send_message(
@@ -53,6 +56,7 @@ class Tweet(commands.Cog):
 				ephemeral = True
 			)
 
+
 		# Decode the users emoji into an acceptable format
 		emoji = (
 			emojis[str(interaction.user.id)]
@@ -60,12 +64,14 @@ class Tweet(commands.Cog):
 			.decode("utf-16")
 		)
 
+
 		# Return a response in <= 3 seconds to prevent the command from erroring
 		await handle_base_response(
 			interaction = interaction,
 			responseType = "info",
 			content = "Determining if the gif is valid...",
 		)
+
 
 		# Determine the real url of the gif, depending
 		url = await self.find_real_url(url)
@@ -76,6 +82,7 @@ class Tweet(commands.Cog):
 				content = "Either a GIF was unable to be found from the link provided, or you have provided a link that is currently not supported.\nPlease note that at the moment we only support Tenor, Giphy, and any other URL that ends in .gif.",
 			)
 
+
 		# Check to see if the gif is already in the queue
 		for post in queue:
 			if post["original_url"] == url:
@@ -84,6 +91,7 @@ class Tweet(commands.Cog):
 					responseType = "error",
 					content = "The URL you entered is already in the queue.",
 				)
+
 
 		# Check to see if the gif is too large
 		is_small_enough = await self.check_file_size(url)
@@ -94,6 +102,7 @@ class Tweet(commands.Cog):
 				content = "The gif you uploaded is too large. Please compress your file to below 15MB in size, and try again.",
 			)
 
+
 		# If userhash field is not in config, return error
 		# This is more just a courtesy thing to the owner of the service :P
 		# Don't want to accidentally spam them with requests and them have no idea who it is
@@ -103,6 +112,7 @@ class Tweet(commands.Cog):
 				responseType = "error",
 				content = "The bot owner has not set the `user_hash` property for uploads to [catbox](https://catbox.moe).",
 			)
+
 
 		# Upload the file to catbox.moe
 		res = await client.post(
@@ -115,6 +125,7 @@ class Tweet(commands.Cog):
 			}
 		)
 
+
 		# Check to see if the upload was successful
 		if res.status_code != 200 or "Something went wrong" in res.text:
 			return await handle_base_response(
@@ -122,6 +133,7 @@ class Tweet(commands.Cog):
 				responseType = "error",
 				content = "An error occurred while uploading your gif to catbox.moe. Please try again later.",
 			)
+
 
 		# Add the post to the queue
 		post = {
@@ -134,6 +146,7 @@ class Tweet(commands.Cog):
 		}
 		queue.append(post)
 		cfg.set('queue', queue)
+
 
 		# Return a success message
 		embed = create_embed(
@@ -201,8 +214,6 @@ class Tweet(commands.Cog):
 
 		await client.aclose()
 		return True if int(res.headers[content_length_header]) <= FILESIZE_LIMIT_TWITTER else False
-
-
 
 
 async def setup(bot: commands.Bot):

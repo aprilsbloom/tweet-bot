@@ -22,6 +22,7 @@ class Auth(commands.Cog):
 				responseType="error",
 			)
 
+
 		# if the user isn't in the list of authed users, return an error
 		authed_users = cfg.get('discord.authed_users')
 		if interaction.user.id not in authed_users:
@@ -30,6 +31,7 @@ class Auth(commands.Cog):
 				content=f"{user.mention} is currently not authenticated.",
 				responseType="error",
 			)
+
 
 		# remove the user from the list of authed users
 		authed_users.remove(interaction.user.id)
@@ -58,6 +60,7 @@ class Auth(commands.Cog):
 				responseType="error",
 			)
 
+
 		# if the user is already in the list of authed users, return an error
 		authed_users = cfg.get('discord.authed_users')
 		if interaction.user.id in authed_users:
@@ -66,6 +69,7 @@ class Auth(commands.Cog):
 				content=f"{user.mention} is already authenticated.",
 				responseType="error",
 			)
+
 
 		# add the user to the list of authed users
 		authed_users.append(interaction.user.id)

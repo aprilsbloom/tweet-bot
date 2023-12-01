@@ -165,8 +165,11 @@ class Config():
 			return obj
 
 	def get(self, key):
+		self.config = self.deep_merge(DEFAULT_CFG, self.config)
+		self.write_config()
 		return self.getter(key, self.config)
 
 	def set(self, key, value):
+		self.config = self.deep_merge(DEFAULT_CFG, self.config)
 		self.config = self.setter(key, value, self.config)
 		self.write_config()

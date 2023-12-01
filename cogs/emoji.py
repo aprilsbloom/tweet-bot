@@ -55,6 +55,7 @@ class Emoji(commands.Cog):
 				ephemeral = True
 			)
 
+
 		# If the user doesn't have an emoji, return an error
 		emojis = cfg.get('discord.emojis')
 		if str(interaction.user.id) not in emojis:
@@ -93,6 +94,7 @@ class Emoji(commands.Cog):
 				ephemeral = True
 			)
 
+
 		# If the user doesn't have an emoji, return an error
 		emojis = cfg.get('discord.emojis')
 		if str(interaction.user.id) not in emojis:
@@ -101,6 +103,7 @@ class Emoji(commands.Cog):
 				responseType = "error",
 				content = "You do not have an emoji set.",
 			)
+
 
 		# Return the users emoji
 		return await handle_base_response(
@@ -129,6 +132,7 @@ class Emoji(commands.Cog):
 				ephemeral = True
 			)
 
+
 		# If there are no emojis, return an error
 		emojis = cfg.get('discord.emojis')
 		if len(emojis) == 0:
@@ -137,6 +141,7 @@ class Emoji(commands.Cog):
 				responseType = "error",
 				content = "No users have set an emoji yet.",
 			)
+
 
 		return await interaction.response.send_message(
 			embed = create_embed(
