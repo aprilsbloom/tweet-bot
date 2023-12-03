@@ -1,11 +1,12 @@
 import re
 import discord
 from discord.ext import commands
+from datetime import datetime, timedelta
 from typing import Optional, Union
 from httpx import AsyncClient
 from cogs.queue._views import AuthedQueueViewBasic
 from utils.general import is_user_authorized, create_embed, handle_base_response, error_response
-from utils.globals import cfg, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, FILESIZE_LIMIT_TWITTER, TENOR_REGEX
+from utils.globals import cfg, POST_HR_INTERVAL, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, FILESIZE_LIMIT_TWITTER, TENOR_REGEX
 
 class Tweet(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -139,7 +140,7 @@ class Tweet(commands.Cog):
 		post = {
 			"original_url": url,
 			"catbox_url": res.text,
-			"author": interaction.user.id,
+			"author": str(interaction.user.id),
 			"emoji": emoji,
 			"caption": caption,
 			"alt_text": alt_text,
@@ -161,6 +162,12 @@ class Tweet(commands.Cog):
 		embed.add_field(name = "Alt Text", value = alt_text, inline = False)
 		embed.add_field(name = "Gif URL", value = res.text, inline = False)
 		embed.set_image(url = url)
+
+		# Finding the eta
+		base_timestamp = datetime.fromtimestamp(int(cfg.get('next_post_time')))
+		eta = int((base_timestamp + timedelta(hours = POST_HR_INTERVAL * (len(queue) - 1))).timestamp())
+		embed.add_field(name = "ETA", value = f"<t:{eta}:R>", inline = False)
+
 
 		if interaction.response.is_done():
 			await interaction.edit_original_response(embed = embed, view = AuthedQueueViewBasic(post, bot_info))

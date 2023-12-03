@@ -78,8 +78,7 @@ def is_user_authorized(user_id: Union[int, str], bot_info: discord.AppInfo):
 		- user_id (int): The user ID to check
 		- bot_info (discord.AppInfo): The bot's application info
 	"""
-
-	return int(user_id) in cfg.get('discord.authed_users') or user_id == bot_info.owner.id
+	return str(user_id) in cfg.get('discord.authed_users') or user_id == bot_info.owner.id
 
 
 async def error_response(interaction: discord.Interaction, error, command_name):

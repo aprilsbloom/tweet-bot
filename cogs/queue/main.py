@@ -73,7 +73,7 @@ class Queue(commands.Cog):
 				orig_url = post.get('original_url', '')
 				author = post.get('author', '')
 				emoji = post.get('emoji', '')
-				eta = int((base_timestamp + timedelta(hours = (count - 1) * POST_HR_INTERVAL)).timestamp())
+				eta = int((base_timestamp + timedelta(hours = POST_HR_INTERVAL * (count - 1))).timestamp())
 
 				if caption:
 					embed.add_field(name = "Caption", value = caption, inline = False)

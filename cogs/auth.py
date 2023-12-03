@@ -25,7 +25,7 @@ class Auth(commands.Cog):
 
 		# if the user isn't in the list of authed users, return an error
 		authed_users = cfg.get('discord.authed_users')
-		if interaction.user.id not in authed_users:
+		if str(interaction.user.id) not in authed_users:
 			return await handle_base_response(
 				interaction=interaction,
 				content=f"{user.mention} is currently not authenticated.",
@@ -34,7 +34,7 @@ class Auth(commands.Cog):
 
 
 		# remove the user from the list of authed users
-		authed_users.remove(interaction.user.id)
+		authed_users.remove(str(interaction.user.id))
 		cfg.set('discord.authed_users', authed_users)
 
 		return await handle_base_response(
@@ -63,7 +63,7 @@ class Auth(commands.Cog):
 
 		# if the user is already in the list of authed users, return an error
 		authed_users = cfg.get('discord.authed_users')
-		if interaction.user.id in authed_users:
+		if str(interaction.user.id) in authed_users:
 			return await handle_base_response(
 				interaction=interaction,
 				content=f"{user.mention} is already authenticated.",
@@ -72,7 +72,7 @@ class Auth(commands.Cog):
 
 
 		# add the user to the list of authed users
-		authed_users.append(interaction.user.id)
+		authed_users.append(str(interaction.user.id))
 		cfg.set('discord.authed_users', authed_users)
 
 		return await handle_base_response(
