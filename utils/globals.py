@@ -13,8 +13,8 @@ CLEAN_URL_REGEX = r"\?.*$"
 # ---- Misc ---- #
 POST_HR_INTERVAL = 4
 
-# Twitter's file size limit is 15MB, this is in bytes
-FILESIZE_LIMIT_TWITTER = 15728640
+# Mastodon's file size limit is 10MB
+GIF_SIZE_LIMIT = 10000000
 
 # Catbox.moe API URL
 CATBOX_URL = "https://catbox.moe/user/api.php"

@@ -179,28 +179,19 @@ async def post():
 		# Assign the post data to individual variables in order to make accessing the properties easier
 		res_data = {}
 
-
 		# Twitter
 		if cfg.get('twitter.enabled'):
 			log.info('Posting to Twitter...')
 			res_data["twitter"] = await post_twitter(post, job_id)
-
-		await asyncio.sleep(5)
-
 
 		# Tumblr
 		if cfg.get('tumblr.enabled'):
 			log.info('Posting to Tumblr...')
 			res_data["tumblr"] = await post_tumblr(post, job_id)
 
-		await asyncio.sleep(5)
-
-
 		# Mastodon
-		# if config["mastodon"]["enabled"]:
-		# 	res_data["mastodon"] = await post_mastodon(config, post, job_id)
-
-		# await asyncio.sleep(5)
+		if cfg.get('mastodon.enabled'):
+			res_data["mastodon"] = await post_mastodon(post, job_id)
 
 
 		# Check to see the results of each function call, if any of them are false or None we don't want to count them
@@ -349,6 +340,13 @@ async def post_mastodon(post, job_id):
 
 	# Post to mastodon
 	media = mstdn.media_post(f"jobs/{job_id}.gif", mime_type = "image/gif", description=alt_text)
+
+	hasFinishedProcessing = False
+	while not hasFinishedProcessing:
+		res = mstdn.media(media['id'])
+		if res.get('url', None) is not None:
+			hasFinishedProcessing = True
+
 	post = mstdn.status_post(
 		status = caption,
 		media_ids = [media]

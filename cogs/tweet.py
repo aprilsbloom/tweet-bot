@@ -6,7 +6,7 @@ from typing import Optional, Union
 from httpx import AsyncClient
 from cogs.queue._views import AuthedQueueViewBasic
 from utils.general import is_user_authorized, create_embed, handle_base_response, error_response
-from utils.globals import cfg, POST_HR_INTERVAL, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, FILESIZE_LIMIT_TWITTER, TENOR_REGEX
+from utils.globals import cfg, POST_HR_INTERVAL, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, GIF_SIZE_LIMIT, TENOR_REGEX
 
 class Tweet(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -100,7 +100,7 @@ class Tweet(commands.Cog):
 			return await handle_base_response(
 				interaction = interaction,
 				responseType = "error",
-				content = "The gif you uploaded is too large. Please compress your file to below 15MB in size, and try again.",
+				content = "The gif you uploaded is too large. Please compress your file to below 10MB in size, and try again.",
 			)
 
 
@@ -217,10 +217,10 @@ class Tweet(commands.Cog):
 		if not content_length_header:
 			new_res = await client.get(url, headers = BASE_HEADERS, timeout = 30)
 			await client.aclose()
-			return True if int(len(new_res.content)) <= FILESIZE_LIMIT_TWITTER else False
+			return True if int(len(new_res.content)) <= GIF_SIZE_LIMIT else False
 
 		await client.aclose()
-		return True if int(res.headers[content_length_header]) <= FILESIZE_LIMIT_TWITTER else False
+		return True if int(res.headers[content_length_header]) <= GIF_SIZE_LIMIT else False
 
 
 async def setup(bot: commands.Bot):
