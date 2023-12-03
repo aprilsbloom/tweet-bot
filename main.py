@@ -60,15 +60,14 @@ class Bot(commands.Bot):
 		await self.wait_until_ready()
 		log.success(f"Logged in as {self.user}.")
 
-		# Determine goal hour
-		# current_time = datetime.now()
-		# goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute)
-		# delay = (goal_timestamp - current_time).total_seconds()
+		current_time = datetime.now()
+		goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute)
+		delay = (goal_timestamp - current_time).total_seconds()
 
-		# cfg.set('next_post_time', int(goal_timestamp.timestamp()))
-		# log.info('Starting loop at ' + goal_timestamp.strftime('%H:%M:%S'))
+		cfg.set('next_post_time', int(goal_timestamp.timestamp()))
+		log.info('Starting loop at ' + goal_timestamp.strftime('%H:%M:%S'))
 
-		# await asyncio.sleep(delay)
+		await asyncio.sleep(delay)
 
 		post_loop.start()
 
