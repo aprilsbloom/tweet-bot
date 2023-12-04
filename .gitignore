@@ -1,3 +1,12 @@
-config.json
-.py[cod]
-__pycache__
+# user config
+config*.json
+
+# debug copies
+main*.py
+
+# job directory (for storing gifs)
+jobs/
+
+# python cache
+**/*.py[cod]
+**/__pycache__
