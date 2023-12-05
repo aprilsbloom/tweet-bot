@@ -74,11 +74,14 @@ class Bot(commands.Bot):
 
 @tasks.loop(hours = POST_HR_INTERVAL)
 async def post_loop():
+	# Set the next post time
+	current_time = datetime.now()
+	goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute, seconds = -current_time.second, microseconds = -current_time.microsecond)
+	cfg.set('next_post_time', int(goal_timestamp.timestamp()))
+
 	# start post function on separate thread
 	post_thread = threading.Thread(target = asyncio.run, args = (post(),))
 	post_thread.start()
-
-	# wait for thread to finish
 	post_thread.join()
 
 async def post():
@@ -245,11 +248,6 @@ async def post():
 		# Close the sessions since we're done with them
 		await client.aclose()
 		await session.close()
-
-		# Set the next post time
-		current_time = datetime.now()
-		goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute, seconds = -current_time.second, milliseconds=-current_time.microsecond, microseconds = -current_time.microsecond)
-		cfg.set('next_post_time', int(goal_timestamp.timestamp()))
 	except:
 		log.error(f"An error occurred while running the post loop\n{traceback.format_exc()}")
 		if client: await client.aclose()
