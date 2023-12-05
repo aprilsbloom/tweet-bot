@@ -62,12 +62,10 @@ class Bot(commands.Bot):
 
 		current_time = datetime.now()
 		goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute)
-		delay = (goal_timestamp - current_time).total_seconds()
-
 		cfg.set('next_post_time', int(goal_timestamp.timestamp()))
 		log.info('Starting loop at ' + goal_timestamp.strftime('%H:%M:%S'))
 
-		await asyncio.sleep(delay)
+		await asyncio.sleep((goal_timestamp - current_time).total_seconds())
 
 		post_loop.start()
 
@@ -76,7 +74,7 @@ class Bot(commands.Bot):
 async def post_loop():
 	# Set the next post time
 	current_time = datetime.now()
-	goal_timestamp = current_time + timedelta(hours = 1, minutes = -current_time.minute, seconds = -current_time.second, microseconds = -current_time.microsecond)
+	goal_timestamp = current_time + timedelta(hours = 4, minutes = -current_time.minute, seconds = -current_time.second, microseconds = -current_time.microsecond)
 	cfg.set('next_post_time', int(goal_timestamp.timestamp()))
 
 	# start post function on separate thread
