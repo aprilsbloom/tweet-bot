@@ -182,16 +182,29 @@ async def post():
 		# Twitter
 		if cfg.get('twitter.enabled'):
 			log.info('Posting to Twitter...')
-			res_data["twitter"] = await post_twitter(post, job_id)
+			try:
+				res_data["twitter"] = await post_twitter(post, job_id)
+			except:
+				log.error(f"An error occurred while posting to Twitter\n{traceback.format_exc()}")
+				res_data["twitter"] = False
 
 		# Tumblr
 		if cfg.get('tumblr.enabled'):
 			log.info('Posting to Tumblr...')
-			res_data["tumblr"] = await post_tumblr(post, job_id)
+			try:
+				res_data["tumblr"] = await post_tumblr(post, job_id)
+			except:
+				log.error(f"An error occurred while posting to Tumblr\n{traceback.format_exc()}")
+				res_data["tumblr"] = False
 
 		# Mastodon
 		if cfg.get('mastodon.enabled'):
-			res_data["mastodon"] = await post_mastodon(post, job_id)
+			log.info('Posting to Mastodon...')
+			try:
+				res_data["mastodon"] = await post_mastodon(post, job_id)
+			except:
+				log.error(f"An error occurred while posting to Mastodon\n{traceback.format_exc()}")
+				res_data["mastodon"] = False
 
 
 		# Check to see the results of each function call, if any of them are false or None we don't want to count them
@@ -306,6 +319,10 @@ async def post_twitter(post, job_id):
 		in_reply_to_tweet_id = tweet[0]["id"]
 	)
 
+	if tweet[0].get('id', None) is None:
+		log.error(f"An error occurred while posting to Twitter\n{tweet}")
+		return False
+
 	log.success(f'Successfully posted to Twitter! https://twitter.com/i/status/{tweet[0]["id"]}')
 	return f"https://twitter.com/i/status/{tweet[0]['id']}"
 
@@ -352,6 +369,10 @@ async def post_mastodon(post, job_id):
 		in_reply_to_id = post["id"]
 	)
 
+	if post.get('url', None) is None:
+		log.error(f"An error occurred while posting to Mastodon\n{post}")
+		return False
+
 	log.success(f'Successfully posted to Mastodon! {post["url"]}')
 	return post['url']
 
@@ -395,6 +416,10 @@ async def post_tumblr(post, job_id):
 		blogname = blog_name,
 		slug = job_id
 	)
+
+	if res.get('id', None) is None:
+		log.error(f"An error occurred while posting to Tumblr\n{res}")
+		return False
 
 	log.success(f'Successfully posted to Tumblr! https://{blog_name}.tumblr.com/post/{res["id"]}')
 	return f'https://{blog_name}.tumblr.com/post/{res["id"]}'
