@@ -188,15 +188,6 @@ async def post():
 				log.error(f"An error occurred while posting to Twitter\n{traceback.format_exc()}")
 				res_data["twitter"] = False
 
-		# Tumblr
-		if cfg.get('tumblr.enabled'):
-			log.info('Posting to Tumblr...')
-			try:
-				res_data["tumblr"] = await post_tumblr(post, job_id)
-			except:
-				log.error(f"An error occurred while posting to Tumblr\n{traceback.format_exc()}")
-				res_data["tumblr"] = False
-
 		# Mastodon
 		if cfg.get('mastodon.enabled'):
 			log.info('Posting to Mastodon...')
@@ -205,6 +196,15 @@ async def post():
 			except:
 				log.error(f"An error occurred while posting to Mastodon\n{traceback.format_exc()}")
 				res_data["mastodon"] = False
+
+		# Tumblr
+		if cfg.get('tumblr.enabled'):
+			log.info('Posting to Tumblr...')
+			try:
+				res_data["tumblr"] = await post_tumblr(post, job_id)
+			except:
+				log.error(f"An error occurred while posting to Tumblr\n{traceback.format_exc()}")
+				res_data["tumblr"] = False
 
 
 		# Check to see the results of each function call, if any of them are false or None we don't want to count them
