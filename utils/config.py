@@ -84,7 +84,7 @@ class Config():
 			config = DEFAULT_CFG
 
 		# merge newly loaded config file with default config
-		self.config = self.deep_merge(DEFAULT_CFG, config)
+		self.config = deep_merge(DEFAULT_CFG, config)
 
 		# write config file to disk
 		self.write_config()
@@ -118,28 +118,6 @@ class Config():
 		with open(path, 'w', encoding='utf8') as f:
 			f.write(json.dumps(self.config, indent=indent_level, separators=separators, sort_keys=sort_keys))
 
-	def deep_merge(self, obj1, obj2):
-		# create new object that we merge to
-		merged_object = {}
-
-		# iterate over the first objects keys
-		for key in obj2.keys():
-			# if key is in second object, and it's another object, merge them recursively
-			if key in obj1 and isinstance(obj2[key], dict) and isinstance(obj1[key], dict):
-				merged_object[key] = self.deep_merge(obj1[key], obj2[key])
-
-			# if key is not in second object, or it's not a object/list, add it to the merged object
-			else:
-				merged_object[key] = obj2[key]
-
-		# iterate over the second objects keys
-		for key in obj1.keys():
-			# If the key is not already in the merged object, add it
-			if key not in merged_object:
-				merged_object[key] = obj1[key]
-
-		return merged_object
-
 	def getter(self, key, obj = None):
 		keys = key.split('.')
 
@@ -165,11 +143,34 @@ class Config():
 			return obj
 
 	def get(self, key):
-		self.config = self.deep_merge(DEFAULT_CFG, self.config)
+		self.config = deep_merge(DEFAULT_CFG, self.config)
 		self.write_config()
 		return self.getter(key, self.config)
 
 	def set(self, key, value):
-		self.config = self.deep_merge(DEFAULT_CFG, self.config)
+		self.config = deep_merge(DEFAULT_CFG, self.config)
 		self.config = self.setter(key, value, self.config)
 		self.write_config()
+
+
+def deep_merge(self, obj1, obj2):
+	# create new object that we merge to
+	merged_object = {}
+
+	# iterate over the first objects keys
+	for key in obj2.keys():
+		# if key is in second object, and it's another object, merge them recursively
+		if key in obj1 and isinstance(obj2[key], dict) and isinstance(obj1[key], dict):
+			merged_object[key] = deep_merge(obj1[key], obj2[key])
+
+		# if key is not in second object, or it's not a object/list, add it to the merged object
+		else:
+			merged_object[key] = obj2[key]
+
+	# iterate over the second objects keys
+	for key in obj1.keys():
+		# If the key is not already in the merged object, add it
+		if key not in merged_object:
+			merged_object[key] = obj1[key]
+
+	return merged_object

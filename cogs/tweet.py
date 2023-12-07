@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Union
 from httpx import AsyncClient
 from cogs.queue._views import AuthedQueueViewBasic
+from utils.config import deep_merge
 from utils.general import is_user_authorized, create_embed, handle_base_response, error_response
 from utils.globals import cfg, POST_HR_INTERVAL, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, GIF_SIZE_LIMIT, TENOR_REGEX
 
@@ -188,9 +189,12 @@ class Tweet(commands.Cog):
 
 		if clean_url.startswith("https://tenor.com/view"):
 			res = await client.get(url)
+			media_tenor_url = re.search(TENOR_REGEX, res.text).group(0)
 
+			res = await client.get(media_tenor_url, headers = deep_merge(BASE_HEADERS, {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8, image/jxl"}))
+			tmp_url = re.search(TENOR_REGEX, res.text).group(0)
 			await client.aclose()
-			return re.search(TENOR_REGEX, res.text).group(0)
+			return tmp_url
 		elif clean_url.startswith("https://giphy.com/gifs/"):
 			res = await client.get(url)
 			tmp_url = res.text.split('property = "og:image" content = "')[1].split('"')[0]
