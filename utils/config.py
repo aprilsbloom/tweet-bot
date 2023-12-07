@@ -153,7 +153,7 @@ class Config():
 		self.write_config()
 
 
-def deep_merge(self, obj1, obj2):
+def deep_merge(obj1, obj2):
 	# create new object that we merge to
 	merged_object = {}
 
