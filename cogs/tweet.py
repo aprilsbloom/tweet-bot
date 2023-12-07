@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from cogs.queue._views import AuthedQueueViewBasic
 from utils.config import deep_merge
 from utils.general import is_user_authorized, create_embed, handle_base_response, error_response
-from utils.globals import cfg, POST_HR_INTERVAL, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, GIF_SIZE_LIMIT, TENOR_REGEX
+from utils.globals import ALT_TENOR_REGEX, cfg, POST_HR_INTERVAL, BASE_HEADERS, CATBOX_URL, CLEAN_URL_REGEX, GIF_SIZE_LIMIT, TENOR_REGEX
 
 class Tweet(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -192,7 +192,7 @@ class Tweet(commands.Cog):
 			media_tenor_url = re.search(TENOR_REGEX, res.text).group(0)
 
 			res = await client.get(media_tenor_url, headers = deep_merge(BASE_HEADERS, {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8, image/jxl"}))
-			tmp_url = re.search(TENOR_REGEX, res.text).group(0)
+			tmp_url = re.search(ALT_TENOR_REGEX, res.text).group(0)
 			await client.aclose()
 			return tmp_url
 		elif clean_url.startswith("https://giphy.com/gifs/"):
