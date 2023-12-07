@@ -4,7 +4,7 @@ from utils.logger import Logger
 
 # ---- Regexes ---- #
 # Regex to find the raw gif URL from a Tenor URL (they provide a link to a page with the gif embedded within the HTML)
-TENOR_REGEX = r"(?i)\b((https?://media[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
+TENOR_REGEX = r"(?i)\b((https?://media1[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
 
 # Regex to remove all parameters from a URL (solely used to check to see if a url ends in .gif, probably a better way but meh)
 CLEAN_URL_REGEX = r"\?.*$"
