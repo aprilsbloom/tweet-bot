@@ -36,7 +36,8 @@ After running the bot for the first time, it will create a configuration file in
 ## Configuration
 
 ![The default configuration file that is written after the app launches. It has sections for configuring Discord, Twitter, Tumblr, and Mastodon.](img/configuration.png)
-The configuration file by default is written within the root directory, and is aptly named `config.json`.
+
+The configuration file by default is written within the root directory, and is named `config.json`.
 
 ### Misc
 
