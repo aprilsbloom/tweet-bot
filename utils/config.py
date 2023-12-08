@@ -42,7 +42,7 @@ DEFAULT_CFG: Final = {
 	},
 	"mastodon": {
 		"enabled": False,
-		"api_url": "",
+		"api_url": "https://botsin.space/",
 		"client_id": "",
 		"client_secret": "",
 		"access_token": ""
