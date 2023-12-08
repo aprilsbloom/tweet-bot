@@ -424,6 +424,10 @@ async def post_tumblr(post, job_id):
 	log.success(f'Successfully posted to Tumblr! https://{blog_name}.tumblr.com/post/{res["id"]}')
 	return f'https://{blog_name}.tumblr.com/post/{res["id"]}'
 
+token = cfg.get('discord.token')
+if token == '':
+	log.error('No token provided in config.json. Exiting...')
+	exit()
 
 bot = Bot()
-bot.run(cfg.get('discord.token'))
+bot.run(token)

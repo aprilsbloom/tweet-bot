@@ -5,17 +5,17 @@ from typing import Union, Final, Optional
 
 # Default configuration file
 DEFAULT_CFG: Final = {
-	"userhash": "enter a randomly generated string here",
+	"userhash": "catbox.moe userhash",
 	"queue": [],
 	"discord": {
 		"token": "",
 		"post_notifs": {
-			"enabled": True,
+			"enabled": False,
 			"webhook": "",
 			"role_to_ping": ""
 		},
 		"misc_notifs": {
-			"enabled": True,
+			"enabled": False,
 			"webhook": ""
 		},
 		"authed_users": [],
@@ -27,21 +27,21 @@ DEFAULT_CFG: Final = {
 		}
 	},
 	"twitter": {
-		"enabled": True,
+		"enabled": False,
 		"consumer_key": "",
 		"consumer_secret": "",
 		"access_token": "",
 		"access_token_secret": ""
 	},
 	"tumblr": {
-		"enabled": True,
+		"enabled": False,
 		"consumer_key": "",
 		"consumer_secret": "",
 		"oauth_token": "",
 		"oauth_secret": ""
 	},
 	"mastodon": {
-		"enabled": True,
+		"enabled": False,
 		"api_url": "",
 		"client_id": "",
 		"client_secret": "",
