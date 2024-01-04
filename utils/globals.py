@@ -6,28 +6,16 @@ from utils.logger import Logger
 # Regex to find the raw gif URL from a Tenor URL (they provide a link to a page with the gif embedded within the HTML)
 TENOR_REGEX = r"(?i)\b((https?://media1[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
 ALT_TENOR_REGEX = r"(?i)\b((https?://c[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
-
-# Regex to remove all parameters from a URL (solely used to check to see if a url ends in .gif, probably a better way but meh)
-CLEAN_URL_REGEX = r"\?.*$"
+CLEAN_URL_REGEX = r"\?.*$" # Regex to remove all parameters from a URL (solely used to check to see if a url ends in .gif, probably a better way but meh)
 
 
 # ---- Misc ---- #
 POST_HR_INTERVAL = 4
-
-# Mastodon's file size limit is 10MB
-GIF_SIZE_LIMIT = 10000000
-
-# Catbox.moe API URL
-CATBOX_URL = "https://catbox.moe/user/api.php"
-
-# Cat related hashtags
-CAT_HASHTAGS = ['gifkitties', 'cat', 'catlife', 'catlove', 'catlover', 'catlovers', 'catoftheday', 'cats', 'cats_of_instagram', 'catsoftheworld']
-
-# Config class instance
-cfg = Config(path = "config.json")
-
-# Logger
-log = Logger()
+GIF_SIZE_LIMIT = 10000000 # Mastodon's file size limit is 10MB
+CATBOX_URL = "https://catbox.moe/user/api.php" # Catbox.moe API URL
+CAT_HASHTAGS = ['gifkitties', 'cat', 'catlife', 'catlove', 'catlover', 'catlovers', 'catoftheday', 'cats', 'catsoftheworld', 'catgif', 'catgifs', 'gifs', 'gif'] # Cat related hashtags
+cfg = Config(path = "config.json") # Config class instance
+log = Logger() # Logger
 
 
 # ---- Webhook information ---- #
@@ -52,4 +40,3 @@ BASE_HEADERS: Final = {
 	"Accept-Encoding": "gzip, deflate, br",
 	"Connection": "keep-alive",
 }
-

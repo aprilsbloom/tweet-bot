@@ -5,18 +5,15 @@ import os
 import traceback
 import random
 import string
-import tweepy
 import threading
-import pytumblr
 import aiohttp
 from datetime import datetime, timedelta
-from mastodon import Mastodon
 from pathlib import Path
 from typing import Union
 from discord.ext import commands, tasks
 from httpx import AsyncClient, Response
-from tenacity import retry, stop_after_attempt, retry_if_result
-from utils.globals import BASE_HEADERS, CAT_HASHTAGS, POST_HR_INTERVAL, POST_WB_INFO, MISC_WB_INFO, cfg, log
+from modules import post_twitter, post_mastodon, post_tumblr
+from utils.globals import BASE_HEADERS, POST_HR_INTERVAL, POST_WB_INFO, MISC_WB_INFO, cfg, log
 
 class Bot(commands.Bot):
 	def __init__(self):
@@ -78,7 +75,7 @@ async def post_loop():
 	cfg.set('next_post_time', int(goal_timestamp.timestamp()))
 
 	# start post function on separate thread
-	post_thread = threading.Thread(target = asyncio.run, args = (post(),))
+	post_thread = threading.Thread(target = asyncio.run, args = (post))
 	post_thread.start()
 	post_thread.join()
 
@@ -255,7 +252,6 @@ async def post():
 
 		cfg.set('queue', queue)
 
-
 		# Close the sessions since we're done with them
 		await client.aclose()
 		await session.close()
@@ -264,165 +260,10 @@ async def post():
 		if client: await client.aclose()
 		if session: await session.close()
 
-@retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
-async def post_twitter(post, job_id):
-	# Twitter API clients
-	try:
-		tw_auth = tweepy.OAuth1UserHandler(
-			cfg.get('twitter.consumer_key'),
-			cfg.get('twitter.consumer_secret'),
-			cfg.get('twitter.access_token'),
-			cfg.get('twitter.access_token_secret'),
-		)
-
-		tw_v1 = tweepy.API(tw_auth, wait_on_rate_limit = True)
-		tw_v2 = tweepy.Client(
-			consumer_key = cfg.get('twitter.consumer_key'),
-			consumer_secret = cfg.get('twitter.consumer_secret'),
-			access_token = cfg.get('twitter.access_token'),
-			access_token_secret = cfg.get('twitter.access_token_secret'),
-			bearer_token = cfg.get('twitter.bearer_token'),
-			wait_on_rate_limit = True,
-		)
-	except:
-		log.error(f"An error occurred while initializing the Twitter API clients\n{traceback.format_exc()}")
-		return
 
 
-	# Assign the post data to individual variables in order to make accessing the properties easier
-	caption = post.get('caption', '')
-	alt_text = post.get('alt_text', '')
-	emoji = post.get('emoji', '')
-	catbox_url = post.get('catbox_url', '')
 
 
-	# Upload gif to twitter
-	mediaID = tw_v1.chunked_upload(
-		filename = f"jobs/{job_id}.gif",
-		media_category = "tweet_gif"
-	).media_id_string
-
-	if alt_text != "":
-		tw_v1.create_media_metadata(
-			media_id = mediaID,
-			alt_text = alt_text
-		)
-
-	# Post tweet and reply to it with url & emoji
-	tweet = tw_v2.create_tweet(
-		text = caption,
-		media_ids = [mediaID]
-	)
-
-	tw_v2.create_tweet(
-		text = f"{catbox_url} - {emoji}",
-		in_reply_to_tweet_id = tweet[0]["id"]
-	)
-
-	if tweet[0].get('id', None) is None:
-		log.error(f"An error occurred while posting to Twitter\n{tweet}")
-		return False
-
-	log.success(f'Successfully posted to Twitter! https://twitter.com/i/status/{tweet[0]["id"]}')
-	return f"https://twitter.com/i/status/{tweet[0]['id']}"
-
-
-@retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
-async def post_mastodon(post, job_id):
-	# Mastodon API client
-	mstdn: Mastodon = ""
-
-	try:
-		mstdn = Mastodon(
-			client_id = cfg.get('mastodon.client_id'),
-			client_secret = cfg.get('mastodon.client_secret'),
-			access_token = cfg.get('mastodon.access_token'),
-			api_base_url = cfg.get('mastodon.api_url')
-		)
-	except:
-		log.error(f"An error occurred while initializing the Mastodon API client\n{traceback.format_exc()}")
-		return
-
-	# Assign the post data to individual variables in order to make accessing the properties easier
-	caption = post.get('caption', '')
-	alt_text = post.get('alt_text', '')
-	emoji = post.get('emoji', '')
-	catbox_url = post.get('catbox_url', '')
-
-
-	# Post to mastodon
-	media = mstdn.media_post(f"jobs/{job_id}.gif", mime_type = "image/gif", description=alt_text)
-
-	hasFinishedProcessing = False
-	while not hasFinishedProcessing:
-		res = mstdn.media(media['id'])
-		if res.get('url', None) is not None:
-			hasFinishedProcessing = True
-
-	post = mstdn.status_post(
-		status = caption,
-		media_ids = [media]
-	)
-
-	mstdn.status_post(
-		status = f"{catbox_url} - {emoji}",
-		in_reply_to_id = post["id"]
-	)
-
-	if post.get('url', None) is None:
-		log.error(f"An error occurred while posting to Mastodon\n{post}")
-		return False
-
-	log.success(f'Successfully posted to Mastodon! {post["url"]}')
-	return post['url']
-
-
-@retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
-async def post_tumblr(post, job_id):
-	# Tumblr API client
-	tmblr: pytumblr.TumblrRestClient = ""
-
-	try:
-		tmblr = pytumblr.TumblrRestClient(
-			cfg.get('tumblr.consumer_key'),
-			cfg.get('tumblr.consumer_secret'),
-			cfg.get('tumblr.oauth_token'),
-			cfg.get('tumblr.oauth_secret')
-		)
-	except:
-		log.error(f"An error occurred while initializing the Tumblr API client\n{traceback.format_exc()}")
-		return
-
-	# Assign the post data to individual variables in order to make accessing the properties easier
-	caption = post.get('caption', '')
-	alt_text = post.get('alt_text', '')
-	emoji = post.get('emoji', '')
-	catbox_url = post.get('catbox_url', '')
-
-	newCaption = ''
-	if caption != '':
-		newCaption = f"{caption} <br><br>"
-
-	newCaption += f'<strong>Alt text:</strong> {alt_text} <br><br><strong>Gif URL:</strong> {catbox_url} <br><br><strong>Posted by:</strong> {emoji}'
-
-
-	# Post to tumblr
-	blog_name = cfg.get('tumblr.blog_name')
-	res = tmblr.create_photo(
-		caption = newCaption,
-		tags = [f'posted-by-{emoji}'] + CAT_HASHTAGS,
-		data = f"jobs/{job_id}.gif",
-		state = 'published',
-		blogname = blog_name,
-		slug = job_id
-	)
-
-	if res.get('id', None) is None:
-		log.error(f"An error occurred while posting to Tumblr\n{res}")
-		return False
-
-	log.success(f'Successfully posted to Tumblr! https://{blog_name}.tumblr.com/post/{res["id"]}')
-	return f'https://{blog_name}.tumblr.com/post/{res["id"]}'
 
 token = cfg.get('discord.token')
 if token == '':
