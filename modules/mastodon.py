@@ -1,7 +1,7 @@
-from mastodon import Mastodon
 import traceback
+from mastodon import Mastodon
 from tenacity import retry, stop_after_attempt, retry_if_result
-from utils.globals import log, cfg, CAT_HASHTAGS
+from utils.globals import log, cfg, CAT_TAGS
 
 @retry(stop=stop_after_attempt(3), retry = retry_if_result(lambda result: result is False))
 async def post_mastodon(post, job_id):
