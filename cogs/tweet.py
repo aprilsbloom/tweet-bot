@@ -3,7 +3,7 @@ from discord.ext import commands
 from typing import Optional
 from urllib.parse import urlparse
 from httpx import AsyncClient
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 
 class Tweet(commands.Cog):
@@ -36,7 +36,12 @@ class Tweet(commands.Cog):
 		parsed_url = urlparse(url)
 
 		if parsed_url.path.endswith(".gif"):
-			exists = await client.head(url)
+			exists = await client.head(
+				url,
+				headers = {
+					"Accept": "image/gif",
+				}
+			)
 			await client.aclose()
 			return url if exists.status_code == 200 else None
 
@@ -45,10 +50,21 @@ class Tweet(commands.Cog):
 			parsed_url.netloc == "tenor.com" and
 			parsed_url.path.startswith("/view")
 		):
-			pass
+			res = await client.get(url)
+
+			# non-ok status
+			if res.status_code != 200:
+				await client.aclose()
+				return None
+
+			soup = BeautifulSoup(res.text, 'html.parser')
+			elem = soup.select_one("#single-gif-container .Gif > img") # type: ignore
+			if elem:
+				await client.aclose()
+				return elem.attrs["src"]
 
 		# giphy
-		if (
+		elif (
 			parsed_url.netloc == "giphy.com" and
 			parsed_url.path.startswith("/gifs")
 		):
@@ -61,7 +77,7 @@ class Tweet(commands.Cog):
 
 			# parse the og:image meta tag for the raw gif url
 			soup = BeautifulSoup(res.text, 'html.parser')
-			elem: Tag = soup.find("meta", property = "og:image") # type: ignore
+			elem = soup.select_one("meta[property=og:image]")
 			if elem:
 				await client.aclose()
 

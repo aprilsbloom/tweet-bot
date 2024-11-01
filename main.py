@@ -4,7 +4,9 @@ import traceback
 from pathlib import Path
 from typing import Union
 from discord.ext import commands
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class Bot(commands.Bot):
   def __init__(self):
@@ -49,4 +51,4 @@ class Bot(commands.Bot):
 
 token = ""
 bot = Bot()
-bot.run(token)
+bot.run(os.getenv("DISCORD_TOKEN")) # type: ignore
