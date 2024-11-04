@@ -1,8 +1,8 @@
 from utils.config import Config
 
-cfg = Config.load(
+cfg: Config = Config.load(
   {
-    "userhash": "",
+    "user_hash": "",
     "queue": [],
     "discord": {
       "token": "",
@@ -37,7 +37,7 @@ cfg = Config.load(
       "consumer_key": "",
       "consumer_secret": "",
       "oauth_token": "",
-      "oauth_secret": "",
+      "oauth_token_secret": "",
     },
     "mastodon": {
       "enabled": False,
@@ -53,3 +53,6 @@ cfg = Config.load(
 		}
   },
 )
+cfg.save() # type: ignore
+
+print(type(cfg))

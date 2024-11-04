@@ -1,5 +1,6 @@
 import json
 import dataconf
+from dataclasses import dataclass
 from typing import List, Dict, Optional
 
 def deep_merge(obj1, obj2):
@@ -24,6 +25,7 @@ def deep_merge(obj1, obj2):
 
 	return merged_object
 
+@dataclass
 class Post():
 	author_id: int
 	alt_text: str
@@ -31,11 +33,13 @@ class Post():
 	catbox_url: str
 	raw_url: str
 
+@dataclass
 class DiscordNotification():
 	enabled: bool
 	webhook: str
 	role_to_ping: Optional[int]
 
+@dataclass
 class DiscordConfig():
 	token: str
 	authed_users: List[int]
@@ -43,6 +47,7 @@ class DiscordConfig():
 	embed_colors: Dict[str, str]
 	notifs: Dict[str, DiscordNotification]
 
+@dataclass
 class TwitterConfig():
 	enabled: bool
 	consumer_key: str
@@ -50,6 +55,7 @@ class TwitterConfig():
 	access_token: str
 	access_token_secret: str
 
+@dataclass
 class TumblrConfig():
 	enabled: bool
 	consumer_key: str
@@ -57,6 +63,7 @@ class TumblrConfig():
 	oauth_token: str
 	oauth_token_secret: str
 
+@dataclass
 class MastodonConfig():
 	enabled: bool
 	api_url: str
@@ -64,11 +71,13 @@ class MastodonConfig():
 	client_secret: str
 	access_token: str
 
+@dataclass
 class BlueskyConfig():
 	enabled: bool
 	username: str
 	app_password: str
 
+@dataclass
 class Config():
 	user_hash: str
 	queue: List[Post]
@@ -83,8 +92,12 @@ class Config():
 		try:
 			with open("config.json", 'r', encoding='utf8') as f:
 				config = json.loads(f.read())
-		except json.JSONDecodeError:
+		except (json.JSONDecodeError, FileNotFoundError):
 			config = default
 
 		merged = deep_merge(default, config)
 		return dataconf.dict(merged, Config)
+
+	def save(self):
+		with open('config.json', 'w', encoding='utf8') as f:
+			f.write(json.dumps(self.__dict__))

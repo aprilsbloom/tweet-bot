@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Union
 from discord.ext import commands
 from dotenv import load_dotenv
+from globals import cfg
 
 load_dotenv()
 
