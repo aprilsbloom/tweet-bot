@@ -1,13 +1,15 @@
 from enum import Enum
-import discord
-from discord.ext import commands
 from typing import Optional
 from urllib.parse import urlparse
-from httpx import AsyncClient, TimeoutException
+
+import discord
 from bs4 import BeautifulSoup
+from discord.ext import commands
+from httpx import AsyncClient, TimeoutException
 
 from globals import cfg, headers
 from utils.config import Post, save_cfg
+
 
 class Error(Enum):
 	NonOk = 1
@@ -111,13 +113,14 @@ class Tweet(commands.Cog):
 			color = discord.Color.green(),
 		)
 
+		embed.add_field(name = 'Author', value = interaction.user.mention, inline = False)
 		embed.add_field(name = "URL", value = catbox_url, inline = False)
 		embed.set_image(url = real_url)
 
 		if caption:
 			embed.add_field(name = "Caption", value = caption, inline = False)
 
-		embed.add_field(name = "Alt Text", value = alt_text, inline = False)
+		embed.add_field(name = "Alt text", value = alt_text, inline = False)
 
 		await interaction.edit_original_response(embed = embed)
 
@@ -193,7 +196,7 @@ class Tweet(commands.Cog):
 				headers = headers,
 				data = {
 					"reqtype": "urlupload",
-					"userhash": cfg["user_hash"],
+					"userhash": cfg["catbox_user_hash"],
 					"url": url,
 				}
 			)

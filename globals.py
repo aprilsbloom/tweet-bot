@@ -1,5 +1,16 @@
 from typing import Final
+
+import discord
+from discord.ext import commands
+
 from utils.config import Config, load_cfg, save_cfg
+
+
+def is_owner(bot: commands.Bot, interaction: discord.Interaction):
+	return bot.owner_id == interaction.user.id
+
+def is_authed(interaction: discord.Interaction):
+	return interaction.user.id in cfg["discord"]["authed_users"]
 
 headers: Final = {
 	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
@@ -10,7 +21,7 @@ headers: Final = {
 
 cfg: Config = load_cfg(
   {
-    "user_hash": "",
+    "catbox_user_hash": "",
     "queue": [],
     "discord": {
       "token": "",
@@ -28,11 +39,6 @@ cfg: Config = load_cfg(
 					"role_to_ping": "",
 				}
 			},
-      "embed_colors": {
-        "success": "#2ECC71",
-        "error": "#ff0000",
-        "info": "#3498DB",
-      },
     },
     "twitter": {
       "enabled": False,

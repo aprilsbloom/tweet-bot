@@ -1,5 +1,6 @@
 import json
-from typing import List, Dict, Optional, TypedDict, cast
+from typing import Dict, List, Optional, TypedDict, cast
+
 
 class Post(TypedDict):
 	author_id: int
@@ -17,7 +18,6 @@ class DiscordConfig(TypedDict):
 	token: str
 	authed_users: List[int]
 	emojis: Dict[int, str]
-	embed_colors: Dict[str, str]
 	notifs: Dict[str, DiscordNotification]
 
 class TwitterConfig(TypedDict):
@@ -47,7 +47,7 @@ class BlueskyConfig(TypedDict):
 	app_password: str
 
 class Config(TypedDict):
-	user_hash: str
+	catbox_user_hash: str
 	queue: List[Post]
 	discord: DiscordConfig
 	twitter: TwitterConfig
