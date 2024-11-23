@@ -24,6 +24,10 @@ class Config(commands.Cog):
 				)
 			)
 
+		# make emoji max 10 chars long
+		if len(emoji) > 10:
+			emoji = emoji[:10]
+
 		cfg["discord"]["emojis"][interaction.user.id] = emoji
 		save_cfg(cfg)
 		await interaction.response.send_message(
