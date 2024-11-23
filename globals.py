@@ -1,6 +1,6 @@
-from utils.config import Config
+from utils.config import Config, load_cfg, save_cfg
 
-cfg: Config = Config.load(
+cfg: Config = load_cfg(
   {
     "user_hash": "",
     "queue": [],
@@ -16,7 +16,8 @@ cfg: Config = Config.load(
 				},
 				"misc": {
 					"enabled": False,
-					"webhook": ""
+					"webhook": "",
+					"role_to_ping": "",
 				}
 			},
       "embed_colors": {
@@ -53,6 +54,6 @@ cfg: Config = Config.load(
 		}
   },
 )
-cfg.save() # type: ignore
+save_cfg(cfg)
 
 print(type(cfg))

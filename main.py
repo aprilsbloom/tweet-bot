@@ -4,10 +4,8 @@ import traceback
 from pathlib import Path
 from typing import Union
 from discord.ext import commands
-from dotenv import load_dotenv
 from globals import cfg
 
-load_dotenv()
 
 class Bot(commands.Bot):
   def __init__(self):
@@ -20,9 +18,7 @@ class Bot(commands.Bot):
       synced = await bot.tree.sync()
       print(f"Synced {len(synced)} commands")
     except Exception:
-      print(
-        f"An error has occurred while syncing commands.\n{traceback.format_exc()}"
-      )
+      print(f"An error has occurred while syncing commands.\n{traceback.format_exc()}")
 
   async def setupCommands(self, directory: Union[str, os.PathLike, Path] = "cogs"):
     for root, _, files in os.walk(directory):
@@ -49,7 +45,5 @@ class Bot(commands.Bot):
     # log.info('Starting loop at ' + goal_timestamp.strftime('%H:%M:%S'))
     # await asyncio.sleep((goal_timestamp - current_time).total_seconds())
 
-
-token = ""
 bot = Bot()
-bot.run(os.getenv("DISCORD_TOKEN")) # type: ignore
+bot.run(cfg["discord"]["token"]) # type: ignore
